@@ -8,6 +8,13 @@
     onToggle?: () => void;
     onDelete?: () => void;
     onDuplicate?: () => void;
+    dragging?: boolean;
+    dragOver?: boolean;
+    ondragstart?: (e: DragEvent) => void;
+    ondragover?: (e: DragEvent) => void;
+    ondragleave?: (e: DragEvent) => void;
+    ondrop?: (e: DragEvent) => void;
+    ondragend?: (e: DragEvent) => void;
     themeConfig?: {
       cardBg: string;
       cardText: string;
@@ -25,6 +32,13 @@
     onToggle,
     onDelete,
     onDuplicate,
+    dragging = false,
+    dragOver = false,
+    ondragstart,
+    ondragover,
+    ondragleave,
+    ondrop,
+    ondragend,
     themeConfig,
   }: Props = $props();
 </script>
@@ -32,12 +46,20 @@
 {#if editable}
   <!-- Editor mode -->
   <div
+    draggable="true"
+    {ondragstart}
+    {ondragover}
+    {ondragleave}
+    {ondrop}
+    {ondragend}
     class="group flex items-center gap-3 p-3 rounded-xl border
-      border-gray-200 bg-white hover:border-gray-300 transition-colors
-      {link.is_active ? '' : 'opacity-50'}"
+      bg-white transition-colors
+      {link.is_active ? '' : 'opacity-50'}
+      {dragging ? 'opacity-40 border-gray-300' : ''}
+      {dragOver ? 'border-indigo-400 bg-indigo-50/50' : 'border-gray-200 hover:border-gray-300'}"
   >
-    <button
-      class="cursor-grab text-gray-400 hover:text-gray-600
+    <div
+      class="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600
         touch-none shrink-0"
       aria-label="Drag to reorder"
     >
@@ -47,7 +69,7 @@
           stroke-width="2"
           d="M4 8h16M4 16h16" />
       </svg>
-    </button>
+    </div>
 
     <div class="flex-1 min-w-0">
       <p class="text-sm font-medium text-gray-900 truncate">

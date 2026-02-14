@@ -191,7 +191,7 @@
       </div>
     {/if}
 
-    <p class="mt-6 text-center text-xs text-gray-400">
+    <p class="mt-3 mb-3 text-center text-xs text-gray-400">
       By continuing, you agree to our Terms of Service and
       Privacy Policy.
     </p>

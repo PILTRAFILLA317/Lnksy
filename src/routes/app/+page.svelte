@@ -1,352 +1,118 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
-  import { invalidateAll } from '$app/navigation';
-  import Button from '$lib/components/ui/Button.svelte';
-  import Input from '$lib/components/ui/Input.svelte';
-  import Card from '$lib/components/ui/Card.svelte';
-  import Modal from '$lib/components/ui/Modal.svelte';
-  import Tabs from '$lib/components/ui/Tabs.svelte';
+  import { studio } from '$lib/stores/studio.svelte.js';
   import Toast from '$lib/components/ui/Toast.svelte';
-  import LinkCard from '$lib/components/ui/LinkCard.svelte';
-  import PhonePreview from '$lib/components/ui/PhonePreview.svelte';
-  import { resolveThemeConfig } from '$lib/themes.js';
-  import { isLinkVisible } from '$lib/utils/helpers.js';
-  import { FREE_LINK_LIMIT } from '$lib/types.js';
-  import type { Link, ThemeConfig } from '$lib/types.js';
+  import EditorRail from '$lib/components/studio/EditorRail.svelte';
+  import EditorPanelHost from '$lib/components/studio/EditorPanelHost.svelte';
+  import StudioPreview from '$lib/components/studio/StudioPreview.svelte';
+  import type {
+    Link,
+    Theme,
+    Font,
+    Background,
+    ProfileContact,
+    Profile,
+  } from '$lib/types.js';
 
   let { data } = $props();
 
-  let mobileTab = $state('editor');
-  let showAddModal = $state(false);
-  let editingLink = $state<Link | null>(null);
-  let toast = $state({ message: '', type: 'info' as const, visible: false });
-
-  // New link form
-  let newTitle = $state('');
-  let newUrl = $state('');
-  let newSubtitle = $state('');
-
-  // Edit link form
-  let editTitle = $state('');
-  let editUrl = $state('');
-  let editSubtitle = $state('');
-  let editStartAt = $state('');
-  let editEndAt = $state('');
-  let editHighlight = $state(false);
-
-  const profile = $derived(data.profile);
-  const links = $derived(data.links ?? []);
+  const profile = $derived(data.profile as Profile);
+  const links = $derived((data.links ?? []) as Link[]);
+  const themes = $derived((data.themes ?? []) as Theme[]);
+  const fonts = $derived((data.fonts ?? []) as Font[]);
+  const backgrounds = $derived((data.backgrounds ?? []) as Background[]);
+  const contacts = $derived((data.contacts ?? []) as ProfileContact[]);
   const isPro = $derived(profile?.plan === 'PRO');
-  const linkCount = $derived(links.length);
-  const canAddLink = $derived(isPro || linkCount < FREE_LINK_LIMIT);
-
-  const currentTheme = $derived(
-    data.themes?.find((t: { id: string }) => t.id === profile?.theme_id)
-  );
-  const themeConfig = $derived(
-    currentTheme
-      ? resolveThemeConfig(
-          currentTheme.config as ThemeConfig,
-          (profile?.theme_overrides ?? {}) as Partial<ThemeConfig>
-        )
-      : null
-  );
-
-  const visibleLinks = $derived(
-    links.filter((l: Link) => isLinkVisible(l))
-  );
-
-  function showToast(message: string, type: 'success' | 'error' | 'info' = 'success') {
-    toast = { message, type, visible: true };
-    setTimeout(() => { toast.visible = false; }, 3000);
-  }
-
-  function openEdit(link: Link) {
-    editingLink = link;
-    editTitle = link.title;
-    editUrl = link.url;
-    editSubtitle = link.subtitle ?? '';
-    editStartAt = link.start_at ?? '';
-    editEndAt = link.end_at ?? '';
-    editHighlight = link.highlight;
-  }
-
-  function resetAddForm() {
-    newTitle = '';
-    newUrl = '';
-    newSubtitle = '';
-    showAddModal = false;
-  }
 </script>
 
 <svelte:head>
   <title>Editor — Lnksy</title>
 </svelte:head>
 
-<Toast message={toast.message} type={toast.type} visible={toast.visible} />
+<Toast
+  message={studio.toastMessage}
+  type={studio.toastType}
+  visible={studio.toastVisible}
+/>
 
-<!-- Mobile tabs -->
-<div class="md:hidden mb-4">
-  <Tabs
-    tabs={[
-      { id: 'editor', label: 'Editor' },
-      { id: 'preview', label: 'Preview' },
-    ]}
-    active={mobileTab}
-    onchange={(id) => { mobileTab = id; }}
-  />
-</div>
+{#if profile}
+  <div class="h-full flex flex-col">
+    <!-- Mobile chip strip for subcategories (visible <lg) -->
+    <div class="lg:hidden">
+      <EditorRail variant="mobile" />
+    </div>
 
-<div class="flex gap-6">
-  <!-- Editor panel -->
-  <div class="flex-1 {mobileTab === 'preview' ? 'hidden md:block' : ''}">
-    <div class="flex items-center justify-between mb-4">
-      <h1 class="text-lg font-semibold text-gray-900">Links</h1>
-      <div class="flex items-center gap-2">
-        {#if !isPro}
-          <span class="text-xs text-gray-400">
-            {linkCount}/{FREE_LINK_LIMIT}
-          </span>
-        {/if}
-        <Button
-          size="sm"
-          onclick={() => { showAddModal = true; }}
-          disabled={!canAddLink}
-        >
-          Add link
-        </Button>
+    <!-- Main studio area -->
+    <div class="flex-1 min-h-0 flex lg:gap-6">
+      <!-- Desktop vertical rail (visible >=lg) -->
+      <div class="hidden lg:flex h-full">
+        <EditorRail variant="desktop" />
       </div>
-    </div>
 
-    {#if !canAddLink}
-      <Card class="mb-4 bg-amber-50 border-amber-200">
-        <p class="text-sm text-amber-800">
-          You've reached the free plan limit of {FREE_LINK_LIMIT} links.
-          <a href="/app/billing" class="font-medium underline">
-            Upgrade to Pro
-          </a>
-          for unlimited links.
-        </p>
-      </Card>
-    {/if}
-
-    <!-- Links list -->
-    <div class="space-y-2">
-      {#each links as link (link.id)}
-        <LinkCard
-          {link}
-          editable
-          onEdit={() => openEdit(link)}
-          onToggle={() => {
-            const fd = new FormData();
-            fd.set('linkId', link.id);
-            fd.set('isActive', String(link.is_active));
-            fetch('/app?/toggleLink', { method: 'POST', body: fd })
-              .then(() => invalidateAll());
-          }}
-          onDelete={() => {
-            if (!confirm('Delete this link?')) return;
-            const fd = new FormData();
-            fd.set('linkId', link.id);
-            fetch('/app?/deleteLink', { method: 'POST', body: fd })
-              .then(() => {
-                invalidateAll();
-                showToast('Link deleted');
-              });
-          }}
-          onDuplicate={() => {
-            const fd = new FormData();
-            fd.set('linkId', link.id);
-            fetch('/app?/duplicateLink', { method: 'POST', body: fd })
-              .then(() => {
-                invalidateAll();
-                showToast('Link duplicated');
-              });
-          }}
+      <!-- Phone preview (center) -->
+      <div
+        class="flex-1 flex items-center justify-center px-6 py-5 lg:px-10 lg:py-6
+          overflow-auto min-h-0 min-w-0"
+      >
+        <StudioPreview
+          {profile}
+          {links}
+          {themes}
+          {contacts}
+          {fonts}
+          {backgrounds}
+          {isPro}
         />
-      {:else}
-        <Card>
-          <p class="text-center text-gray-500 text-sm py-8">
-            No links yet. Add your first link!
-          </p>
-        </Card>
-      {/each}
-    </div>
-  </div>
+      </div>
 
-  <!-- Preview panel (desktop always, mobile via tab) -->
-  <div class="hidden md:block w-[420px] shrink-0 sticky top-6 self-start
-    {mobileTab === 'preview' ? '!block' : ''}">
-    {#if themeConfig && profile}
-      <PhonePreview>
+      <!-- Desktop panel (right column, visible >=lg) -->
+      {#if studio.openPanel}
         <div
-          class="min-h-full p-6 pt-12 flex flex-col items-center"
-          style="background: {themeConfig.bg}; color: {themeConfig.text};
-            font-family: {themeConfig.font};"
+          class="hidden lg:flex lg:flex-col w-[380px] shrink-0
+            border-l border-gray-200 bg-white overflow-hidden"
         >
-          {#if profile.avatar_url}
-            <img
-              src={profile.avatar_url}
-              alt={profile.name ?? profile.handle}
-              class="w-20 h-20 rounded-full object-cover mb-4"
+          <div class="flex-1 overflow-y-auto min-h-0">
+            <EditorPanelHost
+              {profile}
+              {links}
+              {themes}
+              {fonts}
+              {backgrounds}
+              {contacts}
+              {isPro}
             />
-          {:else}
-            <div class="w-20 h-20 rounded-full bg-gray-300 mb-4
-              flex items-center justify-center text-2xl font-bold
-              text-white">
-              {(profile.name ?? profile.handle)?.[0]?.toUpperCase()}
-            </div>
-          {/if}
-
-          <h2 class="text-lg font-bold">
-            {profile.name ?? profile.handle}
-          </h2>
-          {#if profile.bio}
-            <p class="text-sm opacity-70 mt-1 text-center">
-              {profile.bio}
-            </p>
-          {/if}
-
-          <div class="w-full mt-6 space-y-3">
-            {#each visibleLinks as link (link.id)}
-              <LinkCard {link} {themeConfig} />
-            {/each}
           </div>
-
-          {#if profile.branding_enabled}
-            <p class="mt-auto pt-8 text-xs opacity-40">
-              Made with Lnksy
-            </p>
-          {/if}
         </div>
-      </PhonePreview>
+      {/if}
+    </div>
+
+    <!-- Mobile panel (bottom sheet overlay, visible <lg) -->
+    {#if studio.openPanel}
+      <!-- Backdrop -->
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="lg:hidden fixed inset-0 bg-black/30 z-40
+          animate-studio-fade-in"
+        onclick={() => studio.closePanel()}
+      ></div>
+
+      <!-- Panel -->
+      <div
+        class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white
+          rounded-t-2xl shadow-2xl animate-studio-slide-up
+          max-h-[85vh] overflow-hidden flex flex-col"
+        style="padding-bottom: env(safe-area-inset-bottom, 0px);"
+      >
+        <EditorPanelHost
+          {profile}
+          {links}
+          {themes}
+          {fonts}
+          {backgrounds}
+          {contacts}
+          {isPro}
+        />
+      </div>
     {/if}
   </div>
-</div>
-
-<!-- Add Link Modal -->
-<Modal
-  open={showAddModal}
-  onclose={resetAddForm}
-  title="Add link"
->
-  <form
-    method="POST"
-    action="?/addLink"
-    use:enhance={() => {
-      return async ({ result }) => {
-        if (result.type === 'success') {
-          resetAddForm();
-          invalidateAll();
-          showToast('Link added');
-        }
-      };
-    }}
-  >
-    <div class="space-y-4">
-      <Input
-        name="title"
-        label="Title"
-        placeholder="My Website"
-        bind:value={newTitle}
-        required
-      />
-      <Input
-        name="url"
-        label="URL"
-        type="url"
-        placeholder="https://example.com"
-        bind:value={newUrl}
-        required
-      />
-      <Input
-        name="subtitle"
-        label="Subtitle (optional)"
-        placeholder="Check out my site"
-        bind:value={newSubtitle}
-      />
-      <Button type="submit" variant="primary" class="w-full">
-        Add link
-      </Button>
-    </div>
-  </form>
-</Modal>
-
-<!-- Edit Link Modal -->
-<Modal
-  open={editingLink !== null}
-  onclose={() => { editingLink = null; }}
-  title="Edit link"
->
-  {#if editingLink}
-    <form
-      method="POST"
-      action="?/updateLink"
-      use:enhance={() => {
-        return async ({ result }) => {
-          if (result.type === 'success') {
-            editingLink = null;
-            invalidateAll();
-            showToast('Link updated');
-          }
-        };
-      }}
-    >
-      <input type="hidden" name="linkId" value={editingLink.id} />
-      <div class="space-y-4">
-        <Input
-          name="title"
-          label="Title"
-          bind:value={editTitle}
-          required
-        />
-        <Input
-          name="url"
-          label="URL"
-          type="url"
-          bind:value={editUrl}
-          required
-        />
-        <Input
-          name="subtitle"
-          label="Subtitle"
-          bind:value={editSubtitle}
-        />
-
-        {#if isPro}
-          <Input
-            name="startAt"
-            label="Start at"
-            type="datetime-local"
-            bind:value={editStartAt}
-          />
-          <Input
-            name="endAt"
-            label="End at"
-            type="datetime-local"
-            bind:value={editEndAt}
-          />
-          <label class="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="highlight"
-              bind:checked={editHighlight}
-              class="w-4 h-4 rounded border-gray-300 text-indigo-600"
-            />
-            Highlight this link
-          </label>
-        {:else}
-          <p class="text-xs text-gray-400">
-            Scheduling and highlights are Pro features.
-            <a href="/app/billing"
-              class="text-indigo-600 underline">Upgrade</a>
-          </p>
-        {/if}
-
-        <Button type="submit" variant="primary" class="w-full">
-          Save changes
-        </Button>
-      </div>
-    </form>
-  {/if}
-</Modal>
+{/if}

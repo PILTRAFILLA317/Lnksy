@@ -13,7 +13,7 @@ export const POST: RequestHandler = async ({
   }
 
   const body = await request.json();
-  const { type, profileId, linkId, anonId } = body;
+  const { type, profileId, linkId, anonId, contactType } = body;
 
   if (!profileId || !anonId) {
     return json({ error: 'Missing fields' }, { status: 400 });
@@ -133,6 +133,39 @@ export const POST: RequestHandler = async ({
         link_id: linkId,
         date: today,
         clicks: 1,
+      });
+    }
+
+    return json({ ok: true });
+  }
+
+  if (type === 'contact_click') {
+    if (!contactType) {
+      return json({ error: 'Missing contactType' }, { status: 400 });
+    }
+
+    // Increment contact clicks in daily profile stats
+    const { data: cStat } = await admin
+      .from('daily_profile_stats')
+      .select('contact_clicks')
+      .eq('profile_id', profileId)
+      .eq('date', today)
+      .maybeSingle();
+
+    if (cStat) {
+      await admin
+        .from('daily_profile_stats')
+        .update({ contact_clicks: (cStat.contact_clicks ?? 0) + 1 })
+        .eq('profile_id', profileId)
+        .eq('date', today);
+    } else {
+      await admin.from('daily_profile_stats').insert({
+        profile_id: profileId,
+        date: today,
+        views: 0,
+        uniques: 0,
+        clicks: 0,
+        contact_clicks: 1,
       });
     }
 

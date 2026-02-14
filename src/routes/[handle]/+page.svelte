@@ -2,14 +2,29 @@
   import { onMount } from 'svelte';
   import { resolveThemeConfig, isGradient } from '$lib/themes.js';
   import { generateAnonId } from '$lib/utils/helpers.js';
-  import LinkCard from '$lib/components/ui/LinkCard.svelte';
-  import type { ThemeConfig, Link, Profile, Theme } from '$lib/types.js';
+  import type {
+    ThemeConfig,
+    Link,
+    Profile,
+    Theme,
+    Font,
+    Background,
+    ProfileContact,
+  } from '$lib/types.js';
+  import HeaderMediaSection from '$lib/components/sections/HeaderMediaSection.svelte';
+  import TitleSection from '$lib/components/sections/TitleSection.svelte';
+  import ContactSection from '$lib/components/sections/ContactSection.svelte';
+  import MainLinksSection from '$lib/components/sections/MainLinksSection.svelte';
 
   let { data } = $props();
 
   const profile = $derived(data.profile as Profile);
+  const effective = $derived(data.effective);
   const links = $derived(data.links as Link[]);
   const theme = $derived(data.theme as Theme | null);
+  const contacts = $derived(data.contacts as ProfileContact[]);
+  const font = $derived(data.font as Font | null);
+  const background = $derived(data.background as Background | null);
 
   const themeConfig = $derived(
     theme
@@ -19,6 +34,18 @@
         )
       : null
   );
+
+  // Resolve background: custom background > theme bg
+  const pageBg = $derived(() => {
+    if (background) return background.value;
+    return themeConfig?.bg ?? '#ffffff';
+  });
+
+  // Resolve font: custom font > theme font
+  const pageFont = $derived(() => {
+    if (font) return font.family;
+    return themeConfig?.font ?? 'system-ui';
+  });
 
   onMount(() => {
     const anonId = generateAnonId();
@@ -60,88 +87,89 @@
 
 <svelte:head>
   <title>
-    {profile.name ?? profile.handle} — Lnksy
+    {effective.displayTitle} — Lnksy
   </title>
   <meta
     name="description"
-    content={profile.bio ?? `Check out ${profile.name ?? profile.handle}'s links`}
+    content={profile.bio ?? `Check out ${effective.displayTitle}'s links`}
   />
-  <!-- OG Tags -->
-  <meta
-    property="og:title"
-    content={profile.name ?? profile.handle}
-  />
+  <meta property="og:title" content={effective.displayTitle} />
   <meta
     property="og:description"
-    content={profile.bio ?? `Links by ${profile.name ?? profile.handle}`}
+    content={profile.bio ?? `Links by ${effective.displayTitle}`}
   />
   {#if profile.avatar_url}
     <meta property="og:image" content={profile.avatar_url} />
   {/if}
   <meta property="og:type" content="profile" />
   <meta name="twitter:card" content="summary" />
+  {#if font?.url}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href={font.url} />
+  {/if}
 </svelte:head>
 
 {#if themeConfig}
-  {@const bgIsGradient = isGradient(themeConfig.bg)}
+  {@const bgValue = pageBg()}
+  {@const fontFamily = pageFont()}
+  {@const bgIsGradient = isGradient(bgValue)}
   <div
-    class="min-h-screen flex flex-col items-center px-4 py-8
-      md:py-16"
+    class="min-h-screen flex flex-col items-center"
     style="
       {bgIsGradient
-      ? `background: ${themeConfig.bg}`
-      : `background-color: ${themeConfig.bg}`};
+      ? `background: ${bgValue}`
+      : `background-color: ${bgValue}`};
       color: {themeConfig.text};
-      font-family: {themeConfig.font};
+      font-family: '{fontFamily}', system-ui, sans-serif;
     "
   >
-    <div class="w-full max-w-md mx-auto flex flex-col items-center">
-      <!-- Avatar -->
-      {#if profile.avatar_url}
-        <img
-          src={profile.avatar_url}
-          alt={profile.name ?? profile.handle}
-          class="w-24 h-24 rounded-full object-cover mb-4
-            ring-2 ring-white/20"
-        />
-      {:else}
-        <div
-          class="w-24 h-24 rounded-full mb-4 flex items-center
-            justify-center text-3xl font-bold"
-          style="background: rgba(255,255,255,0.15)"
-        >
-          {(profile.name ?? profile.handle)?.[0]?.toUpperCase()}
-        </div>
-      {/if}
+    <div class="w-full max-w-md mx-auto flex flex-col items-center flex-1 pt-12">
+      <!-- Section 1: Header Media -->
+      <HeaderMediaSection
+        headerMode={effective.headerMode}
+        avatarUrl={profile.avatar_url}
+        heroUrl={profile.hero_url}
+        heroPosition={profile.hero_position}
+        displayTitle={effective.displayTitle}
+        bgColor={bgValue}
+      />
 
-      <!-- Name -->
-      <h1 class="text-xl font-bold text-center">
-        {profile.name ?? profile.handle}
-      </h1>
+      <!-- Section 2: Title & Bio -->
+      <TitleSection
+        displayTitle={effective.displayTitle}
+        bio={profile.bio}
+      />
 
-      <!-- Bio -->
-      {#if profile.bio}
-        <p class="mt-2 text-sm text-center opacity-80 max-w-xs">
-          {profile.bio}
-        </p>
-      {/if}
+      <!-- Section 3: Contact Icons -->
+      <ContactSection
+        {contacts}
+        textColor={themeConfig.text}
+        profileId={profile.id}
+      />
 
-      <!-- Links -->
-      <div class="w-full mt-8 space-y-3">
-        {#each links as link (link.id)}
-          <LinkCard {link} {themeConfig} />
-        {/each}
-      </div>
+      <!-- Section 4: Main Links -->
+      <MainLinksSection
+        {links}
+        layout={effective.mainLinksLayout}
+        {themeConfig}
+      />
 
       <!-- Branding -->
       {#if profile.branding_enabled}
         <a
           href="/"
-          class="mt-12 text-xs opacity-30 hover:opacity-60
+          class="mt-auto pt-12 pb-8 text-xs opacity-30 hover:opacity-60
             transition-opacity"
         >
           Made with Lnksy
         </a>
+      {:else}
+        <div class="mt-auto h-8"></div>
       {/if}
     </div>
   </div>
