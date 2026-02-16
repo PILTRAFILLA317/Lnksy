@@ -9,7 +9,6 @@ export type EditorPanel =
   | 'title'
   | 'contacts'
   | 'themes'
-  | 'layout'
   | 'background'
   | 'fonts'
   | 'colors'
@@ -19,7 +18,6 @@ export type EditorPanel =
 const EDITOR_PANELS: NonNullable<EditorPanel>[] = ['links', 'header', 'title', 'contacts'];
 const APPEARANCE_PANELS: NonNullable<EditorPanel>[] = [
   'themes',
-  'layout',
   'background',
   'fonts',
   'colors',
@@ -32,7 +30,6 @@ export const PANEL_LABELS: Record<NonNullable<EditorPanel>, string> = {
   title: 'Title & Bio',
   contacts: 'Contact Buttons',
   themes: 'Themes',
-  layout: 'Layout',
   background: 'Background',
   fonts: 'Fonts',
   colors: 'Customize Colors',
@@ -44,12 +41,15 @@ export const SECTION_TO_PANEL: Record<string, NonNullable<EditorPanel>> = {
   'header-media': 'header',
   'title-bio': 'title',
   contacts: 'contacts',
-  'main-links': 'links',
 };
+
+/** Prefix for link section click zones */
+export const LINK_SECTION_PREFIX = 'link-section:';
 
 class StudioState {
   activeTab = $state<BottomTab>('editor');
   openPanel = $state<EditorPanel>(null);
+  activeSectionId = $state<string | null>(null);
 
   // Toast
   toastMessage = $state('');
@@ -62,9 +62,10 @@ class StudioState {
       try {
         const saved = localStorage.getItem('lnksy_studio');
         if (saved) {
-          const { tab, panel } = JSON.parse(saved);
+          const { tab, panel, sectionId } = JSON.parse(saved);
           if (tab && this.#isValidTab(tab)) this.activeTab = tab;
           if (panel !== undefined) this.openPanel = panel;
+          if (sectionId !== undefined) this.activeSectionId = sectionId;
         }
       } catch {
         // Ignore invalid saved state
@@ -117,6 +118,11 @@ class StudioState {
     this.#persist();
   }
 
+  setActiveSection(id: string | null) {
+    this.activeSectionId = id;
+    this.#persist();
+  }
+
   showToast(message: string, type: 'success' | 'error' | 'info' = 'success') {
     this.toastMessage = message;
     this.toastType = type;
@@ -143,7 +149,11 @@ class StudioState {
     if (typeof window !== 'undefined') {
       localStorage.setItem(
         'lnksy_studio',
-        JSON.stringify({ tab: this.activeTab, panel: this.openPanel }),
+        JSON.stringify({
+          tab: this.activeTab,
+          panel: this.openPanel,
+          sectionId: this.activeSectionId,
+        }),
       );
     }
   }

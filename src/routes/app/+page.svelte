@@ -6,6 +6,7 @@
   import StudioPreview from '$lib/components/studio/StudioPreview.svelte';
   import type {
     Link,
+    LinkSection,
     Theme,
     Font,
     Background,
@@ -17,6 +18,7 @@
 
   const profile = $derived(data.profile as Profile);
   const links = $derived((data.links ?? []) as Link[]);
+  const sections = $derived((data.sections ?? []) as LinkSection[]);
   const themes = $derived((data.themes ?? []) as Theme[]);
   const fonts = $derived((data.fonts ?? []) as Font[]);
   const backgrounds = $derived((data.backgrounds ?? []) as Background[]);
@@ -56,6 +58,7 @@
         <StudioPreview
           {profile}
           {links}
+          {sections}
           {themes}
           {contacts}
           {fonts}
@@ -74,6 +77,7 @@
             <EditorPanelHost
               {profile}
               {links}
+              {sections}
               {themes}
               {fonts}
               {backgrounds}
@@ -106,6 +110,7 @@
         <EditorPanelHost
           {profile}
           {links}
+          {sections}
           {themes}
           {fonts}
           {backgrounds}

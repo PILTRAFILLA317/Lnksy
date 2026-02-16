@@ -14,10 +14,11 @@ import {
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
   const { profile } = await parent();
-  if (!profile) return { links: [], themes: [], fonts: [], backgrounds: [], contacts: [] };
+  if (!profile) return { links: [], sections: [], themes: [], fonts: [], backgrounds: [], contacts: [] };
 
   const [
     { data: links },
+    { data: sections },
     { data: themes },
     { data: fonts },
     { data: backgrounds },
@@ -25,6 +26,11 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
   ] = await Promise.all([
     locals.supabase
       .from('links')
+      .select('*')
+      .eq('profile_id', profile.id)
+      .order('order_index'),
+    locals.supabase
+      .from('link_sections')
       .select('*')
       .eq('profile_id', profile.id)
       .order('order_index'),
@@ -48,6 +54,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 
   return {
     links: links ?? [],
+    sections: sections ?? [],
     themes: themes ?? [],
     fonts: fonts ?? [],
     backgrounds: backgrounds ?? [],
@@ -86,21 +93,22 @@ export const actions = {
     }
 
     const fd = await request.formData();
+    const sectionId = fd.get('sectionId') as string;
     const title = (fd.get('title') as string)?.trim();
     const url = (fd.get('url') as string)?.trim();
     const subtitle = (fd.get('subtitle') as string)?.trim() || null;
     const imageUrl = (fd.get('imageUrl') as string)?.trim() || null;
     const platform = (fd.get('platform') as string)?.trim() || null;
 
-    if (!title || !url) {
-      return fail(400, { error: 'Title and URL are required' });
+    if (!title || !url || !sectionId) {
+      return fail(400, { error: 'Title, URL, and section are required' });
     }
 
-    // Get max order
+    // Get max order within section
     const { data: maxLink } = await admin
       .from('links')
       .select('order_index')
-      .eq('profile_id', profile.id)
+      .eq('section_id', sectionId)
       .order('order_index', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -109,6 +117,7 @@ export const actions = {
 
     await admin.from('links').insert({
       profile_id: profile.id,
+      section_id: sectionId,
       title,
       url,
       subtitle,
@@ -257,13 +266,14 @@ export const actions = {
     const { data: maxLink } = await admin
       .from('links')
       .select('order_index')
-      .eq('profile_id', profile.id)
+      .eq('section_id', original.section_id)
       .order('order_index', { ascending: false })
       .limit(1)
       .maybeSingle();
 
     await admin.from('links').insert({
       profile_id: profile.id,
+      section_id: original.section_id,
       title: `${original.title} (copy)`,
       url: original.url,
       subtitle: original.subtitle,
@@ -304,6 +314,220 @@ export const actions = {
     } catch {
       return fail(400, { error: 'Invalid order data' });
     }
+
+    return { success: true };
+  },
+
+  // --- Section actions ---
+
+  addSection: async ({ request, locals }) => {
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401);
+
+    const admin = createSupabaseAdmin();
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('id, plan')
+      .eq('owner_id', user.id)
+      .single();
+    if (!profile) return fail(404);
+
+    const fd = await request.formData();
+    const title = (fd.get('title') as string)?.trim() || null;
+
+    // Get max order
+    const { data: maxSection } = await admin
+      .from('link_sections')
+      .select('order_index')
+      .eq('profile_id', profile.id)
+      .order('order_index', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const nextOrder = (maxSection?.order_index ?? -1) + 1;
+
+    const { data: section } = await admin
+      .from('link_sections')
+      .insert({
+        profile_id: profile.id,
+        title,
+        order_index: nextOrder,
+      })
+      .select('id')
+      .single();
+
+    return { success: true, sectionId: section?.id };
+  },
+
+  updateSection: async ({ request, locals }) => {
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401);
+
+    const admin = createSupabaseAdmin();
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('owner_id', user.id)
+      .single();
+    if (!profile) return fail(404);
+
+    const fd = await request.formData();
+    const sectionId = fd.get('sectionId') as string;
+    if (!sectionId) return fail(400, { error: 'Missing section ID' });
+
+    const updates: Record<string, unknown> = {};
+    const title = fd.get('title');
+    if (title !== null) updates.title = (title as string).trim() || null;
+    const isVisible = fd.get('isVisible');
+    if (isVisible !== null) updates.is_visible = isVisible === 'true';
+
+    await admin
+      .from('link_sections')
+      .update(updates)
+      .eq('id', sectionId)
+      .eq('profile_id', profile.id);
+
+    return { success: true };
+  },
+
+  updateSectionLayout: async ({ request, locals }) => {
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401);
+
+    const admin = createSupabaseAdmin();
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('id, plan')
+      .eq('owner_id', user.id)
+      .single();
+    if (!profile) return fail(404);
+
+    const fd = await request.formData();
+    const sectionId = fd.get('sectionId') as string;
+    const layout = fd.get('layout') as MainLinksLayout;
+
+    if (!sectionId || !layout) {
+      return fail(400, { error: 'Missing section ID or layout' });
+    }
+
+    if (
+      PRO_LAYOUTS.includes(layout) &&
+      !canUseImageLayouts(profile.plan)
+    ) {
+      return fail(403, { error: 'This layout requires Pro' });
+    }
+
+    await admin
+      .from('link_sections')
+      .update({ layout })
+      .eq('id', sectionId)
+      .eq('profile_id', profile.id);
+
+    return { success: true };
+  },
+
+  deleteSection: async ({ request, locals }) => {
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401);
+
+    const admin = createSupabaseAdmin();
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('owner_id', user.id)
+      .single();
+    if (!profile) return fail(404);
+
+    const fd = await request.formData();
+    const sectionId = fd.get('sectionId') as string;
+
+    // Prevent deleting last section
+    const { count } = await admin
+      .from('link_sections')
+      .select('*', { count: 'exact', head: true })
+      .eq('profile_id', profile.id);
+
+    if ((count ?? 0) <= 1) {
+      return fail(400, { error: 'Cannot delete the last section' });
+    }
+
+    await admin
+      .from('link_sections')
+      .delete()
+      .eq('id', sectionId)
+      .eq('profile_id', profile.id);
+
+    return { success: true };
+  },
+
+  reorderSections: async ({ request, locals }) => {
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401);
+
+    const admin = createSupabaseAdmin();
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('owner_id', user.id)
+      .single();
+    if (!profile) return fail(404);
+
+    const fd = await request.formData();
+    const orderJson = fd.get('order') as string;
+
+    try {
+      const order: string[] = JSON.parse(orderJson);
+      for (let i = 0; i < order.length; i++) {
+        await admin
+          .from('link_sections')
+          .update({ order_index: i })
+          .eq('id', order[i])
+          .eq('profile_id', profile.id);
+      }
+    } catch {
+      return fail(400, { error: 'Invalid order data' });
+    }
+
+    return { success: true };
+  },
+
+  moveLink: async ({ request, locals }) => {
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401);
+
+    const admin = createSupabaseAdmin();
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('owner_id', user.id)
+      .single();
+    if (!profile) return fail(404);
+
+    const fd = await request.formData();
+    const linkId = fd.get('linkId') as string;
+    const targetSectionId = fd.get('targetSectionId') as string;
+
+    if (!linkId || !targetSectionId) {
+      return fail(400, { error: 'Missing link or target section' });
+    }
+
+    // Get max order in target section
+    const { data: maxLink } = await admin
+      .from('links')
+      .select('order_index')
+      .eq('section_id', targetSectionId)
+      .order('order_index', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    await admin
+      .from('links')
+      .update({
+        section_id: targetSectionId,
+        order_index: (maxLink?.order_index ?? -1) + 1,
+      })
+      .eq('id', linkId)
+      .eq('profile_id', profile.id);
 
     return { success: true };
   },

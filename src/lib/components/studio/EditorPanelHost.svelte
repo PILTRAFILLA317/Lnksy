@@ -5,13 +5,14 @@
   import PanelTitleBio from './PanelTitleBio.svelte';
   import PanelContacts from './PanelContacts.svelte';
   import PanelThemes from './PanelThemes.svelte';
-  import PanelLayout from './PanelLayout.svelte';
+
   import PanelBackground from './PanelBackground.svelte';
   import PanelFonts from './PanelFonts.svelte';
   import PanelColors from './PanelColors.svelte';
   import PanelBranding from './PanelBranding.svelte';
   import type {
     Link,
+    LinkSection,
     Profile,
     Theme,
     Font,
@@ -22,6 +23,7 @@
   interface Props {
     profile: Profile;
     links: Link[];
+    sections: LinkSection[];
     themes: Theme[];
     fonts: Font[];
     backgrounds: Background[];
@@ -29,12 +31,12 @@
     isPro: boolean;
   }
 
-  let { profile, links, themes, fonts, backgrounds, contacts, isPro }: Props =
+  let { profile, links, sections, themes, fonts, backgrounds, contacts, isPro }: Props =
     $props();
 </script>
 
 {#if studio.openPanel === 'links'}
-  <PanelLinks {links} {isPro} />
+  <PanelLinks {links} {sections} {profile} {isPro} />
 {:else if studio.openPanel === 'header'}
   <PanelHeader {profile} {isPro} />
 {:else if studio.openPanel === 'title'}
@@ -43,8 +45,6 @@
   <PanelContacts {contacts} />
 {:else if studio.openPanel === 'themes'}
   <PanelThemes {themes} {profile} {isPro} />
-{:else if studio.openPanel === 'layout'}
-  <PanelLayout {profile} {isPro} />
 {:else if studio.openPanel === 'background'}
   <PanelBackground {backgrounds} {profile} {isPro} />
 {:else if studio.openPanel === 'fonts'}

@@ -10,6 +10,7 @@
     Font,
     Background,
     ProfileContact,
+    LinkSectionWithLinks,
   } from '$lib/types.js';
   import HeaderMediaSection from '$lib/components/sections/HeaderMediaSection.svelte';
   import TitleSection from '$lib/components/sections/TitleSection.svelte';
@@ -20,7 +21,7 @@
 
   const profile = $derived(data.profile as Profile);
   const effective = $derived(data.effective);
-  const links = $derived(data.links as Link[]);
+  const sections = $derived(data.sections as LinkSectionWithLinks[]);
   const theme = $derived(data.theme as Theme | null);
   const contacts = $derived(data.contacts as ProfileContact[]);
   const font = $derived(data.font as Font | null);
@@ -152,12 +153,19 @@
         profileId={profile.id}
       />
 
-      <!-- Section 4: Main Links -->
-      <MainLinksSection
-        {links}
-        layout={effective.mainLinksLayout}
-        {themeConfig}
-      />
+      <!-- Section 4: Link Sections -->
+      {#each sections as section (section.id)}
+        {#if section.title}
+          <h2 class="w-full px-4 mt-4 mb-1 text-sm font-semibold opacity-70">
+            {section.title}
+          </h2>
+        {/if}
+        <MainLinksSection
+          links={section.links}
+          layout={section.layout}
+          {themeConfig}
+        />
+      {/each}
 
       <!-- Branding -->
       {#if profile.branding_enabled}

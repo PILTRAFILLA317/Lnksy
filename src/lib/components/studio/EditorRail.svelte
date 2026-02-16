@@ -22,7 +22,6 @@
 
   const appearanceItems: RailItem[] = [
     { id: 'themes', icon: 'themes' },
-    { id: 'layout', icon: 'layout' },
     { id: 'background', icon: 'background' },
     { id: 'fonts', icon: 'fonts' },
     { id: 'colors', icon: 'colors' },

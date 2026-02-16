@@ -2,6 +2,8 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types.js';
 import { createSupabaseAdmin } from '$lib/server/supabase.js';
 import { resolveEffectiveProfile } from '$lib/utils/plan.js';
+import { resolveEffectiveSectionLayout } from '$lib/utils/plan.js';
+import type { Link, LinkSectionWithLinks } from '$lib/types.js';
 
 export const load: PageServerLoad = async ({ params }) => {
   const admin = createSupabaseAdmin();
@@ -23,6 +25,7 @@ export const load: PageServerLoad = async ({ params }) => {
   const now = new Date().toISOString();
   const [
     { data: links },
+    { data: sections },
     { data: theme },
     { data: contacts },
     { data: font },
@@ -35,6 +38,12 @@ export const load: PageServerLoad = async ({ params }) => {
       .eq('is_active', true)
       .or(`start_at.is.null,start_at.lte.${now}`)
       .or(`end_at.is.null,end_at.gt.${now}`)
+      .order('order_index'),
+    admin
+      .from('link_sections')
+      .select('*')
+      .eq('profile_id', profile.id)
+      .eq('is_visible', true)
       .order('order_index'),
     admin
       .from('themes')
@@ -58,6 +67,20 @@ export const load: PageServerLoad = async ({ params }) => {
       .maybeSingle(),
   ]);
 
+  // Group links by section_id
+  const linksBySection = new Map<string, Link[]>();
+  for (const link of (links ?? []) as Link[]) {
+    const existing = linksBySection.get(link.section_id) ?? [];
+    existing.push(link);
+    linksBySection.set(link.section_id, existing);
+  }
+
+  const sectionsWithLinks: LinkSectionWithLinks[] = ((sections ?? []) as LinkSectionWithLinks[]).map((s) => ({
+    ...s,
+    layout: resolveEffectiveSectionLayout(profile.plan, s.layout),
+    links: linksBySection.get(s.id) ?? [],
+  }));
+
   // If font is PRO and user is FREE, fall back to null (use theme default)
   const effectiveFont =
     font && font.is_pro && profile.plan !== 'PRO' ? null : font;
@@ -72,6 +95,7 @@ export const load: PageServerLoad = async ({ params }) => {
     profile,
     effective,
     links: links ?? [],
+    sections: sectionsWithLinks,
     theme,
     contacts: contacts ?? [],
     font: effectiveFont,

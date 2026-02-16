@@ -3,6 +3,18 @@ import { PRO_LAYOUTS } from '$lib/types.js';
 
 type Plan = 'FREE' | 'PRO';
 
+export function canAddSection(_plan: Plan): boolean {
+  return true;
+}
+
+export function resolveEffectiveSectionLayout(
+  plan: Plan,
+  layout: MainLinksLayout,
+): MainLinksLayout {
+  if (plan === 'PRO' || !PRO_LAYOUTS.includes(layout)) return layout;
+  return 'LIST_ICON';
+}
+
 export function canUseHero(plan: Plan): boolean {
   return plan === 'PRO';
 }

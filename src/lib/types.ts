@@ -30,11 +30,30 @@ export interface Profile {
   deleted_at: string | null;
 }
 
+// --- Link Sections ---
+
+export interface LinkSection {
+  id: string;
+  profile_id: string;
+  title: string | null;
+  layout: MainLinksLayout;
+  is_visible: boolean;
+  order_index: number;
+  options: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LinkSectionWithLinks extends LinkSection {
+  links: Link[];
+}
+
 // --- Links ---
 
 export interface Link {
   id: string;
   profile_id: string;
+  section_id: string;
   title: string;
   url: string;
   subtitle: string | null;
