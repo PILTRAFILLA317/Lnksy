@@ -1,0 +1,29 @@
+.preview-root {
+  container-type: inline-size;
+  container-name: phone-preview;
+  --pvw: 390px;
+  --space-1: clamp(6px, 1.5cqw, 8px);
+  --space-2: clamp(8px, 2.1cqw, 12px);
+  --space-3: clamp(10px, 2.8cqw, 14px);
+  --space-4: clamp(12px, 3.4cqw, 18px);
+  --space-5: clamp(16px, 4.2cqw, 22px);
+  --space-6: clamp(20px, 5.2cqw, 28px);
+  --text-sm: clamp(12px, 3.2cqw, 14px);
+  --text-md: clamp(14px, 3.7cqw, 16px);
+  --text-lg: clamp(16px, 4.6cqw, 20px);
+  --text-xl: clamp(20px, 6cqw, 30px);
+  --radius-sm: clamp(10px, 2.6cqw, 14px);
+  --radius-md: clamp(14px, 3.5cqw, 18px);
+  --radius-lg: clamp(16px, 4.2cqw, 24px);
+  --touch-size: clamp(44px, 12cqw, 52px);
+}
+
+.preview-root.pv-size-xs {
+  --space-4: 12px;
+  --space-5: 16px;
+}
+
+.preview-root.pv-size-lg {
+  --space-4: 18px;
+  --space-5: 22px;
+}

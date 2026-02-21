@@ -1,19 +1,16 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types.js';
-import { createSupabaseAdmin } from '$lib/server/supabase.js';
+import { api } from '$convex/_generated/api.js';
 import { validateHandle } from '$lib/utils/handle.js';
+import type { Id } from '$convex/_generated/dataModel.js';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
-  const { user } = await locals.safeGetSession();
-  if (!user) redirect(303, '/auth');
+  const user = locals.user;
+  if (!user) redirect(303, '/auth/login');
 
-  // If user already has a profile, redirect to app
-  const { data: existing } = await locals.supabase
-    .from('profiles')
-    .select('id')
-    .eq('owner_id', user.id)
-    .maybeSingle();
-
+  const existing = await locals.convex.query(api.profiles.getOwn, {
+    userId: user.id as Id<"users">,
+  });
   if (existing) redirect(303, '/app');
 
   const handle = url.searchParams.get('handle') ?? '';
@@ -22,20 +19,15 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 
 export const actions = {
   default: async ({ request, locals }) => {
-    const { user } = await locals.safeGetSession();
+    const user = locals.user;
     if (!user) return fail(401, { error: 'Not authenticated' });
 
     const formData = await request.formData();
-    const handle = (formData.get('handle') as string)
-      ?.toLowerCase()
-      .trim();
+    const handle = (formData.get('handle') as string)?.toLowerCase().trim();
     const confirmed = formData.get('confirmed') === 'on';
 
     if (!confirmed) {
-      return fail(400, {
-        error: 'You must confirm you understand',
-        handle,
-      });
+      return fail(400, { error: 'You must confirm you understand', handle });
     }
 
     const validation = validateHandle(handle);
@@ -43,83 +35,29 @@ export const actions = {
       return fail(400, { error: validation.error, handle });
     }
 
-    const admin = createSupabaseAdmin();
-
-    // Check reserved
-    const { data: reserved } = await admin
-      .from('reserved_slugs')
-      .select('slug')
-      .eq('slug', handle)
-      .maybeSingle();
-
-    if (reserved) {
-      return fail(400, { error: 'This handle is reserved', handle });
-    }
-
-    // Check taken
-    const { data: taken } = await admin
-      .from('profiles')
-      .select('id')
-      .eq('handle', handle)
-      .maybeSingle();
-
-    if (taken) {
-      return fail(400, {
-        error: 'This handle is already taken',
+    const userId = user.id as Id<"users">;
+    let profileId: any;
+    try {
+      profileId = await locals.convex.mutation(api.profiles.create, {
+        userId,
         handle,
+        name: undefined,
       });
+    } catch (e: any) {
+      const msg = e?.message ?? e?.data ?? 'Failed to create profile. Try again.';
+      return fail(400, { error: msg, handle });
     }
 
-    // Create profile
-    const { data: profile, error: profileErr } = await admin
-      .from('profiles')
-      .insert({
-        owner_id: user.id,
-        handle,
-        name: user.user_metadata?.full_name ?? null,
-        avatar_url: user.user_metadata?.avatar_url ?? null,
-        theme_id: 'default',
-        plan: 'FREE',
-      })
-      .select()
-      .single();
-
-    if (profileErr) {
-      return fail(500, {
-        error: 'Failed to create profile. Try again.',
-        handle,
-      });
-    }
-
-    // Create example links
-    await admin.from('links').insert([
-      {
-        profile_id: profile.id,
-        title: 'My Website',
-        url: 'https://example.com',
-        order_index: 0,
-      },
-      {
-        profile_id: profile.id,
-        title: 'Twitter',
-        url: 'https://twitter.com',
-        order_index: 1,
-      },
-      {
-        profile_id: profile.id,
-        title: 'Instagram',
-        url: 'https://instagram.com',
-        order_index: 2,
-      },
-    ]);
-
-    // Create billing record
-    await admin.from('billing').insert({
-      owner_id: user.id,
-      profile_id: profile.id,
-      plan: 'FREE',
-      status: 'inactive',
+    const sections = await locals.convex.query(api.sections.getByProfile, {
+      profileId: profileId as any,
     });
+
+    if (sections && sections.length > 0) {
+      const sectionId = sections[0]._id as any;
+      await locals.convex.mutation(api.links.add, { userId, sectionId, title: 'My Website', url: 'https://example.com' });
+      await locals.convex.mutation(api.links.add, { userId, sectionId, title: 'Twitter', url: 'https://twitter.com' });
+      await locals.convex.mutation(api.links.add, { userId, sectionId, title: 'Instagram', url: 'https://instagram.com' });
+    }
 
     redirect(303, '/app');
   },

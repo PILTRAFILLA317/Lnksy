@@ -1,21 +1,24 @@
-import type { SupabaseClient, Session } from '@supabase/supabase-js';
+import type { ConvexHttpClient } from "convex/browser";
+import type { Id } from "$convex/_generated/dataModel.js";
 
 declare global {
   namespace App {
     interface Locals {
-      supabase: SupabaseClient;
-      safeGetSession: () => Promise<{
-        session: Session | null;
-        user: import('@supabase/supabase-js').User | null;
-      }>;
-      session: Session | null;
-      user: import('@supabase/supabase-js').User | null;
+      convex: ConvexHttpClient;
+      user: {
+        id: Id<"users">;
+        email: string;
+        emailVerified: boolean;
+      } | null;
     }
     interface PageData {
-      session: Session | null;
-      user: import('@supabase/supabase-js').User | null;
+      user: {
+        id: string;
+        email: string;
+        emailVerified: boolean;
+      } | null;
     }
   }
 }
 
-export {};
+export { };

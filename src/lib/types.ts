@@ -95,22 +95,53 @@ export interface Theme {
   id: string;
   name: string;
   is_pro: boolean;
+  tags: string[];
   config: ThemeConfig;
 }
 
 export interface ThemeConfig {
+  // Core colors
   bg: string;
   text: string;
+  muted?: string;         // Secondary/muted text color
+  accent?: string;        // Accent / highlight color
+
+  // Cards
   cardBg: string;
   cardText: string;
   cardBorder: string;
   cardRadius: string;
+  cardShadow?: string;    // CSS box-shadow value
+
+  // Buttons
   buttonVariant: 'filled' | 'outline';
+  buttonRadius?: string;  // Falls back to cardRadius if omitted
+
+  // Typography
   font: string;
+
+  // Effects
   backdropBlur?: string;
+  shadowIntensity?: 'none' | 'soft' | 'medium' | 'strong';
 }
 
-export type ThemeOverrides = Partial<ThemeConfig>;
+// Keys allowed in user overrides (security whitelist)
+export type OverrideKey =
+  | 'bg'
+  | 'text'
+  | 'accent'
+  | 'cardBg'
+  | 'cardText'
+  | 'cardRadius'
+  | 'buttonVariant'
+  | 'buttonRadius'
+  | 'shadowIntensity';
+
+export type ThemeOverrides = Partial<Pick<ThemeConfig, OverrideKey>>;
+
+// Studio preview controls (stored in studio store, not DB)
+export type PreviewZoomMode = 'FIT' | '90' | '100' | '110';
+export type PreviewOrientation = 'portrait' | 'landscape';
 
 // --- Font ---
 
@@ -188,3 +219,10 @@ export const FREE_LAYOUTS: MainLinksLayout[] = [
   'LIST_ICON',
   'GRID_ICON',
 ];
+
+export const ALL_THEME_TAGS = [
+  'dark', 'light', 'gradient', 'glass', 'pastel',
+  'neon', 'minimal', 'bold', 'warm', 'cool', 'nature', 'brutalist',
+] as const;
+
+export type ThemeTag = typeof ALL_THEME_TAGS[number];

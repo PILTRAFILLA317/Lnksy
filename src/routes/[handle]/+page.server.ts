@@ -1,104 +1,88 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types.js';
-import { createSupabaseAdmin } from '$lib/server/supabase.js';
-import { resolveEffectiveProfile } from '$lib/utils/plan.js';
-import { resolveEffectiveSectionLayout } from '$lib/utils/plan.js';
+import { api } from '$convex/_generated/api.js';
+import { createConvexClient } from '$lib/server/convex.js';
+import { resolveEffectiveProfile, resolveEffectiveSectionLayout } from '$lib/utils/plan.js';
+import {
+  mapProfile,
+  mapLink,
+  mapLinkSection,
+  mapTheme,
+  mapFont,
+  mapBackground,
+  mapContact,
+} from '$lib/utils/convex-mappers.js';
 import type { Link, LinkSectionWithLinks } from '$lib/types.js';
 
 export const load: PageServerLoad = async ({ params }) => {
-  const admin = createSupabaseAdmin();
+  // Public page — no auth needed
+  const convex = createConvexClient();
 
-  const { data: profile } = await admin
-    .from('profiles')
-    .select('*')
-    .eq('handle', params.handle)
-    .is('deleted_at', null)
-    .maybeSingle();
+  const profileDoc = await convex.query(api.profiles.getByHandle, {
+    handle: params.handle,
+  });
 
-  if (!profile) {
+  if (!profileDoc) {
     error(404, 'Profile not found');
   }
 
-  const effective = resolveEffectiveProfile(profile);
+  const profileId = profileDoc._id;
 
-  // Get active links within scheduling window
-  const now = new Date().toISOString();
-  const [
-    { data: links },
-    { data: sections },
-    { data: theme },
-    { data: contacts },
-    { data: font },
-    { data: background },
-  ] = await Promise.all([
-    admin
-      .from('links')
-      .select('*')
-      .eq('profile_id', profile.id)
-      .eq('is_active', true)
-      .or(`start_at.is.null,start_at.lte.${now}`)
-      .or(`end_at.is.null,end_at.gt.${now}`)
-      .order('order_index'),
-    admin
-      .from('link_sections')
-      .select('*')
-      .eq('profile_id', profile.id)
-      .eq('is_visible', true)
-      .order('order_index'),
-    admin
-      .from('themes')
-      .select('*')
-      .eq('id', profile.theme_id)
-      .single(),
-    admin
-      .from('profile_contacts')
-      .select('*')
-      .eq('profile_id', profile.id)
-      .order('order_index'),
-    admin
-      .from('fonts')
-      .select('*')
-      .eq('id', profile.font_id)
-      .maybeSingle(),
-    admin
-      .from('backgrounds')
-      .select('*')
-      .eq('id', profile.background_id)
-      .maybeSingle(),
-  ]);
+  const [linksDoc, sectionsDoc, themeDoc, contactsDoc, fontDoc, bgDoc] =
+    await Promise.all([
+      convex.query(api.links.getActiveByProfile, { profileId }),
+      convex.query(api.sections.getVisibleByProfile, { profileId }),
+      convex.query(api.themes.getById, { themeId: profileDoc.themeId }),
+      convex.query(api.contacts.getEnabledByProfile, { profileId }),
+      profileDoc.fontId
+        ? convex.query(api.fonts.getById, { fontId: profileDoc.fontId })
+        : Promise.resolve(null),
+      profileDoc.backgroundId
+        ? convex.query(api.backgrounds.getById, { backgroundId: profileDoc.backgroundId })
+        : Promise.resolve(null),
+    ]);
+
+  const profile = mapProfile(profileDoc);
+  const effective = resolveEffectiveProfile(profile as any);
+
+  const links = (linksDoc ?? []).map(mapLink);
+  const rawSections = (sectionsDoc ?? []).map(mapLinkSection);
 
   // Group links by section_id
   const linksBySection = new Map<string, Link[]>();
-  for (const link of (links ?? []) as Link[]) {
+  for (const link of links) {
     const existing = linksBySection.get(link.section_id) ?? [];
     existing.push(link);
     linksBySection.set(link.section_id, existing);
   }
 
-  const sectionsWithLinks: LinkSectionWithLinks[] = ((sections ?? []) as LinkSectionWithLinks[]).map((s) => ({
+  const sectionsWithLinks: LinkSectionWithLinks[] = rawSections.map((s) => ({
     ...s,
     layout: resolveEffectiveSectionLayout(profile.plan, s.layout),
     links: linksBySection.get(s.id) ?? [],
   }));
 
-  // If font is PRO and user is FREE, fall back to null (use theme default)
-  const effectiveFont =
-    font && font.is_pro && profile.plan !== 'PRO' ? null : font;
+  const theme = themeDoc ? mapTheme(themeDoc) : null;
+  const contacts = (contactsDoc ?? []).map(mapContact);
 
-  // If background is PRO and user is FREE, fall back to null
-  const effectiveBackground =
-    background && background.is_pro && profile.plan !== 'PRO'
+  // Respect plan restrictions for Pro-only assets
+  const font =
+    fontDoc && fontDoc.isPro && profile.plan !== 'PRO' ? null : fontDoc ? mapFont(fontDoc) : null;
+  const background =
+    bgDoc && bgDoc.isPro && profile.plan !== 'PRO'
       ? null
-      : background;
+      : bgDoc
+        ? mapBackground(bgDoc)
+        : null;
 
   return {
     profile,
     effective,
-    links: links ?? [],
+    links,
     sections: sectionsWithLinks,
     theme,
-    contacts: contacts ?? [],
-    font: effectiveFont,
-    background: effectiveBackground,
+    contacts,
+    font,
+    background,
   };
 };

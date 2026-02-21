@@ -50,7 +50,7 @@
 {:else if studio.openPanel === 'fonts'}
   <PanelFonts {fonts} {profile} {isPro} />
 {:else if studio.openPanel === 'colors'}
-  <PanelColors {profile} {isPro} />
+  <PanelColors {profile} {themes} {isPro} />
 {:else if studio.openPanel === 'branding'}
   <PanelBranding {profile} {isPro} />
 {/if}

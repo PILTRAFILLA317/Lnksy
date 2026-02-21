@@ -129,7 +129,7 @@
       font-family: '{fontFamily}', system-ui, sans-serif;
     "
   >
-    <div class="w-full max-w-md mx-auto flex flex-col items-center flex-1 pt-12">
+    <div class="w-full max-w-md mx-auto flex flex-col items-center flex-1 pt-5">
       <!-- Section 1: Header Media -->
       <HeaderMediaSection
         headerMode={effective.headerMode}

@@ -52,7 +52,8 @@
 
       <!-- Phone preview (center) -->
       <div
-        class="flex-1 flex items-center justify-center px-6 py-5 lg:px-10 lg:py-6
+        class="flex-1 flex items-center justify-center px-0 py-0 md:px-6
+          md:py-5 lg:px-10 lg:py-6
           overflow-auto min-h-0 min-w-0"
       >
         <StudioPreview

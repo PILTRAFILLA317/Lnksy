@@ -4,6 +4,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [tailwindcss(), sveltekit()],
+  ssr: {
+    noExternal: ['@lucide/svelte', '@humanspeak/svelte-motion'],
+  },
   test: {
     include: ['src/tests/**/*.test.ts'],
     environment: 'jsdom',

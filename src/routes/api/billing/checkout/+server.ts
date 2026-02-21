@@ -1,12 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
 import { getStripe } from '$lib/server/stripe.js';
-import { createSupabaseAdmin } from '$lib/server/supabase.js';
+import { createConvexClient } from '$lib/server/convex.js';
+import { api } from '$convex/_generated/api.js';
+import type { Id } from '$convex/_generated/dataModel.js';
 import {
   STRIPE_PRICE_ID_MONTHLY,
   STRIPE_PRICE_ID_YEARLY,
+  APP_BASE_URL,
 } from '$env/dynamic/private';
-import { APP_BASE_URL } from '$env/dynamic/private';
 
 export const POST: RequestHandler = async ({ request }) => {
   const { userId, email, period } = await request.json();
@@ -15,17 +17,27 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({ error: 'Missing fields' }, { status: 400 });
   }
 
-  const stripe = getStripe();
-  const admin = createSupabaseAdmin();
+  if (!APP_BASE_URL?.trim()) {
+    return json({ error: 'Billing is not configured: APP_BASE_URL is missing' }, { status: 503 });
+  }
 
-  // Check or create billing record
-  const { data: billing } = await admin
-    .from('billing')
-    .select('stripe_customer_id')
-    .eq('owner_id', userId)
-    .maybeSingle();
+  let stripe;
+  try {
+    stripe = getStripe();
+  } catch (error) {
+    console.error('Billing checkout unavailable:', error);
+    return json({ error: 'Billing is not configured: STRIPE_SECRET_KEY is missing' }, { status: 503 });
+  }
 
-  let customerId = billing?.stripe_customer_id;
+  const convex = createConvexClient();
+  const uid = userId as Id<"users">;
+
+  // Ensure billing record exists
+  await convex.mutation(api.billing.ensureBillingRecord, { userId: uid });
+
+  // Get billing record to find existing Stripe customer
+  const billingDoc = await convex.query(api.billing.getOwn, { userId: uid });
+  let customerId = billingDoc?.stripeCustomerId ?? null;
 
   if (!customerId) {
     const customer = await stripe.customers.create({
@@ -34,14 +46,21 @@ export const POST: RequestHandler = async ({ request }) => {
     });
     customerId = customer.id;
 
-    await admin
-      .from('billing')
-      .update({ stripe_customer_id: customerId })
-      .eq('owner_id', userId);
+    await convex.mutation(api.billing.setStripeCustomer, {
+      userId: uid,
+      stripeCustomerId: customerId,
+    });
   }
 
   const priceId =
     period === 'yearly' ? STRIPE_PRICE_ID_YEARLY : STRIPE_PRICE_ID_MONTHLY;
+
+  if (!priceId?.trim()) {
+    return json(
+      { error: 'Billing is not configured: Stripe price ID is missing for selected period' },
+      { status: 503 }
+    );
+  }
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,

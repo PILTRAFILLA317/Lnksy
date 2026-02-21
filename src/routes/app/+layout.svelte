@@ -2,7 +2,6 @@
   import type { Snippet } from 'svelte';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
-  import { createClient } from '$lib/supabase.js';
   import { studio } from '$lib/stores/studio.svelte.js';
   import BottomNav from '$lib/components/studio/BottomNav.svelte';
 
@@ -28,8 +27,7 @@
   });
 
   async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await fetch('/auth/signout', { method: 'POST' });
     goto('/');
   }
 </script>

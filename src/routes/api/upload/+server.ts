@@ -1,18 +1,15 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
-import { createSupabaseAdmin } from '$lib/server/supabase.js';
-import { createSupabaseServerClient } from '$lib/server/supabase.js';
+import { api } from '$convex/_generated/api.js';
+import type { Id } from '$convex/_generated/dataModel.js';
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
-  const supabase = createSupabaseServerClient(cookies);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+export const POST: RequestHandler = async ({ request, locals, fetch }) => {
+  const user = locals.user;
   if (!user) {
     return json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const userId = user.id as Id<"users">;
   const formData = await request.formData();
   const file = formData.get('file') as File;
 
@@ -24,21 +21,25 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     return json({ error: 'File too large' }, { status: 400 });
   }
 
-  const admin = createSupabaseAdmin();
-  const ext = file.name.split('.').pop() ?? 'jpg';
-  const path = `${user.id}/avatar.${ext}`;
+  let uploadUrl: string;
+  try {
+    uploadUrl = await locals.convex.mutation(api.files.generateUploadUrl, { userId });
+  } catch {
+    return json({ error: 'Failed to get upload URL' }, { status: 500 });
+  }
 
-  const { error: uploadErr } = await admin.storage
-    .from('avatars')
-    .upload(path, file, { upsert: true });
+  const uploadRes = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': file.type },
+    body: file,
+  });
 
-  if (uploadErr) {
+  if (!uploadRes.ok) {
     return json({ error: 'Upload failed' }, { status: 500 });
   }
 
-  const {
-    data: { publicUrl },
-  } = admin.storage.from('avatars').getPublicUrl(path);
+  const { storageId } = await uploadRes.json();
+  const url = await locals.convex.mutation(api.files.getFileUrl, { storageId });
 
-  return json({ url: publicUrl });
+  return json({ url });
 };

@@ -1,6 +1,8 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types.js';
-import { createSupabaseAdmin } from '$lib/server/supabase.js';
+import { api } from '$convex/_generated/api.js';
+import type { Id } from '$convex/_generated/dataModel.js';
+import { clearSessionCookie, getSessionToken, hashToken } from '$lib/server/auth.js';
 
 export const load: PageServerLoad = async ({ parent }) => {
   const { profile } = await parent();
@@ -9,27 +11,28 @@ export const load: PageServerLoad = async ({ parent }) => {
 
 export const actions = {
   updateProfile: async ({ request, locals }) => {
-    const { user } = await locals.safeGetSession();
+    const user = locals.user;
     if (!user) return fail(401);
 
-    const admin = createSupabaseAdmin();
+    const userId = user.id as Id<"users">;
     const fd = await request.formData();
+    const name = (fd.get('name') as string)?.trim() || undefined;
+    const bio = (fd.get('bio') as string)?.trim() || undefined;
 
-    const name = (fd.get('name') as string)?.trim() || null;
-    const bio = (fd.get('bio') as string)?.trim() || null;
-
-    await admin
-      .from('profiles')
-      .update({ name, bio })
-      .eq('owner_id', user.id);
+    try {
+      await locals.convex.mutation(api.profiles.update, { userId, name, bio });
+    } catch (e: any) {
+      return fail(400, { error: e?.message ?? 'Update failed' });
+    }
 
     return { success: true };
   },
 
-  uploadAvatar: async ({ request, locals }) => {
-    const { user } = await locals.safeGetSession();
+  uploadAvatar: async ({ request, locals, fetch }) => {
+    const user = locals.user;
     if (!user) return fail(401);
 
+    const userId = user.id as Id<"users">;
     const fd = await request.formData();
     const file = fd.get('avatar') as File;
 
@@ -45,45 +48,61 @@ export const actions = {
       return fail(400, { error: 'Must be an image' });
     }
 
-    const admin = createSupabaseAdmin();
-    const ext = file.name.split('.').pop() ?? 'jpg';
-    const path = `${user.id}/avatar.${ext}`;
+    let uploadUrl: string;
+    try {
+      uploadUrl = await locals.convex.mutation(api.files.generateUploadUrl, { userId });
+    } catch {
+      return fail(500, { error: 'Failed to get upload URL' });
+    }
 
-    const { error: uploadErr } = await admin.storage
-      .from('avatars')
-      .upload(path, file, { upsert: true });
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    });
 
-    if (uploadErr) {
+    if (!uploadRes.ok) {
       return fail(500, { error: 'Upload failed' });
     }
 
-    const {
-      data: { publicUrl },
-    } = admin.storage.from('avatars').getPublicUrl(path);
+    const { storageId } = await uploadRes.json();
+    const avatarUrl = await locals.convex.mutation(api.files.getFileUrl, { storageId });
 
-    await admin
-      .from('profiles')
-      .update({ avatar_url: publicUrl })
-      .eq('owner_id', user.id);
+    try {
+      await locals.convex.mutation(api.profiles.updateAvatar, {
+        userId,
+        avatarUrl: avatarUrl ?? '',
+      });
+    } catch (e: any) {
+      return fail(500, { error: e?.message ?? 'Failed to save avatar' });
+    }
 
     return { success: true };
   },
 
-  deleteAccount: async ({ locals }) => {
-    const { user } = await locals.safeGetSession();
+  deleteAccount: async ({ locals, cookies }) => {
+    const user = locals.user;
     if (!user) return fail(401);
 
-    const admin = createSupabaseAdmin();
+    const userId = user.id as Id<"users">;
 
-    // Soft delete
-    await admin
-      .from('profiles')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('owner_id', user.id);
+    try {
+      await locals.convex.mutation(api.profiles.softDelete, { userId });
+    } catch (e: any) {
+      return fail(500, { error: e?.message ?? 'Delete failed' });
+    }
 
-    // Sign out
-    await locals.supabase.auth.signOut();
+    // Clear session
+    const rawToken = getSessionToken(cookies);
+    if (rawToken) {
+      try {
+        await locals.convex.mutation(api.customAuth.logout, {
+          tokenHash: hashToken(rawToken),
+        });
+      } catch { /* ignore */ }
+    }
+    clearSessionCookie(cookies);
 
-    return { success: true, deleted: true };
+    redirect(303, '/');
   },
 } satisfies Actions;

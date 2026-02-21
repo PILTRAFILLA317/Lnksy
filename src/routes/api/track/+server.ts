@@ -1,12 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.js';
-import { createSupabaseAdmin } from '$lib/server/supabase.js';
+import { createConvexClient } from '$lib/server/convex.js';
+import { api } from '$convex/_generated/api.js';
 import { rateLimit } from '$lib/server/rate-limit.js';
 
-export const POST: RequestHandler = async ({
-  request,
-  getClientAddress,
-}) => {
+export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   const ip = getClientAddress();
   if (!rateLimit(`track:${ip}`)) {
     return json({ error: 'Too many requests' }, { status: 429 });
@@ -19,69 +17,14 @@ export const POST: RequestHandler = async ({
     return json({ error: 'Missing fields' }, { status: 400 });
   }
 
-  const admin = createSupabaseAdmin();
-  const today = new Date().toISOString().split('T')[0];
+  // No auth needed — public tracking mutations
+  const convex = createConvexClient();
 
   if (type === 'page_view') {
-    // Check if this is a unique visit (dedup by session)
-    const { data: existing } = await admin
-      .from('analytics_sessions')
-      .select('id, last_seen_at')
-      .eq('profile_id', profileId)
-      .eq('anon_id', anonId)
-      .maybeSingle();
-
-    let isUnique = false;
-
-    if (!existing) {
-      // New session
-      isUnique = true;
-      await admin.from('analytics_sessions').insert({
-        profile_id: profileId,
-        anon_id: anonId,
-      });
-    } else {
-      // Check if last seen was > 30 min ago
-      const lastSeen = new Date(existing.last_seen_at).getTime();
-      const thirtyMinAgo = Date.now() - 30 * 60 * 1000;
-
-      if (lastSeen < thirtyMinAgo) {
-        isUnique = true;
-      }
-
-      await admin
-        .from('analytics_sessions')
-        .update({ last_seen_at: new Date().toISOString() })
-        .eq('id', existing.id);
-    }
-
-    // Upsert daily stats
-    const { data: stat } = await admin
-      .from('daily_profile_stats')
-      .select('views, uniques')
-      .eq('profile_id', profileId)
-      .eq('date', today)
-      .maybeSingle();
-
-    if (stat) {
-      await admin
-        .from('daily_profile_stats')
-        .update({
-          views: stat.views + 1,
-          uniques: isUnique ? stat.uniques + 1 : stat.uniques,
-        })
-        .eq('profile_id', profileId)
-        .eq('date', today);
-    } else {
-      await admin.from('daily_profile_stats').insert({
-        profile_id: profileId,
-        date: today,
-        views: 1,
-        uniques: isUnique ? 1 : 0,
-        clicks: 0,
-      });
-    }
-
+    await convex.mutation(api.analytics.trackPageView, {
+      profileId: profileId as any,
+      anonId,
+    });
     return json({ ok: true });
   }
 
@@ -89,53 +32,10 @@ export const POST: RequestHandler = async ({
     if (!linkId) {
       return json({ error: 'Missing linkId' }, { status: 400 });
     }
-
-    // Increment profile clicks
-    const { data: profileStat } = await admin
-      .from('daily_profile_stats')
-      .select('clicks')
-      .eq('profile_id', profileId)
-      .eq('date', today)
-      .maybeSingle();
-
-    if (profileStat) {
-      await admin
-        .from('daily_profile_stats')
-        .update({ clicks: profileStat.clicks + 1 })
-        .eq('profile_id', profileId)
-        .eq('date', today);
-    } else {
-      await admin.from('daily_profile_stats').insert({
-        profile_id: profileId,
-        date: today,
-        views: 0,
-        uniques: 0,
-        clicks: 1,
-      });
-    }
-
-    // Increment link clicks
-    const { data: linkStat } = await admin
-      .from('daily_link_stats')
-      .select('clicks')
-      .eq('link_id', linkId)
-      .eq('date', today)
-      .maybeSingle();
-
-    if (linkStat) {
-      await admin
-        .from('daily_link_stats')
-        .update({ clicks: linkStat.clicks + 1 })
-        .eq('link_id', linkId)
-        .eq('date', today);
-    } else {
-      await admin.from('daily_link_stats').insert({
-        link_id: linkId,
-        date: today,
-        clicks: 1,
-      });
-    }
-
+    await convex.mutation(api.analytics.trackLinkClick, {
+      profileId: profileId as any,
+      linkId: linkId as any,
+    });
     return json({ ok: true });
   }
 
@@ -143,32 +43,10 @@ export const POST: RequestHandler = async ({
     if (!contactType) {
       return json({ error: 'Missing contactType' }, { status: 400 });
     }
-
-    // Increment contact clicks in daily profile stats
-    const { data: cStat } = await admin
-      .from('daily_profile_stats')
-      .select('contact_clicks')
-      .eq('profile_id', profileId)
-      .eq('date', today)
-      .maybeSingle();
-
-    if (cStat) {
-      await admin
-        .from('daily_profile_stats')
-        .update({ contact_clicks: (cStat.contact_clicks ?? 0) + 1 })
-        .eq('profile_id', profileId)
-        .eq('date', today);
-    } else {
-      await admin.from('daily_profile_stats').insert({
-        profile_id: profileId,
-        date: today,
-        views: 0,
-        uniques: 0,
-        clicks: 0,
-        contact_clicks: 1,
-      });
-    }
-
+    await convex.mutation(api.analytics.trackContactClick, {
+      profileId: profileId as any,
+      contactType,
+    });
     return json({ ok: true });
   }
 
