@@ -5,6 +5,7 @@
   import PanelTitleBio from './PanelTitleBio.svelte';
   import PanelContacts from './PanelContacts.svelte';
   import PanelAppearance from './PanelAppearance.svelte';
+  import PanelBackground from './PanelBackground.svelte';
   import PanelColors from './PanelColors.svelte';
   import PanelFonts from './PanelFonts.svelte';
   import PanelBranding from './PanelBranding.svelte';
@@ -41,8 +42,10 @@
   <PanelTitleBio {profile} {isPro} />
 {:else if studio.openPanel === 'contacts'}
   <PanelContacts {contacts} />
-{:else if studio.openPanel === 'appearance'}
-  <PanelAppearance {profile} {themes} {backgrounds} {isPro} />
+{:else if studio.openPanel === 'theme'}
+  <PanelAppearance {profile} {themes} {isPro} />
+{:else if studio.openPanel === 'background'}
+  <PanelBackground {backgrounds} {profile} {isPro} />
 {:else if studio.openPanel === 'customize'}
   <PanelColors {profile} {themes} {isPro} />
 {:else if studio.openPanel === 'fonts'}

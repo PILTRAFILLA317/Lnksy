@@ -13,7 +13,8 @@ export type EditorPanel =
   | 'header'
   | 'title'
   | 'contacts'
-  | 'appearance'
+  | 'theme'
+  | 'background'
   | 'customize'
   | 'fonts'
   | 'branding'
@@ -21,7 +22,8 @@ export type EditorPanel =
 
 const EDITOR_PANELS: NonNullable<EditorPanel>[] = ['components', 'header', 'title', 'contacts'];
 const APPEARANCE_PANELS: NonNullable<EditorPanel>[] = [
-  'appearance',
+  'theme',
+  'background',
   'customize',
   'fonts',
   'branding',
@@ -32,7 +34,8 @@ export const PANEL_LABELS: Record<NonNullable<EditorPanel>, string> = {
   header: 'Header',
   title: 'Title & Bio',
   contacts: 'Contact Buttons',
-  appearance: 'Appearance',
+  theme: 'Theme',
+  background: 'Background',
   customize: 'Customize',
   fonts: 'Fonts',
   branding: 'Branding',

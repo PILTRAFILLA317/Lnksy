@@ -406,7 +406,7 @@
               style="background: {pageBg};
                 color: {themeConfig.text};
                 font-family: '{pageFont}', system-ui, sans-serif;
-                position: relative; z-index: 1;"
+                position: relative;"
             >
               <div
                 class="w-full max-w-md mx-auto min-h-full flex flex-col items-center gap-0 pb-6"
