@@ -135,7 +135,6 @@ export const create = mutation({
       displayTitle: undefined,
       themeId: "default",
       themeOverrides: {},
-      backgroundId: "solid-white",
       fontId: "inter",
       mainLinksLayout: "LIST_ICON",
       plan: "FREE",
@@ -282,7 +281,7 @@ export const selectTheme = mutation({
     if (theme.isPro && profile.plan !== "PRO") {
       throw new ConvexError("Este tema requiere Pro");
     }
-    await ctx.db.patch(profile._id, { themeId });
+    await ctx.db.patch(profile._id, { themeId, themeOverrides: {}, backgroundId: undefined });
   },
 });
 
@@ -388,6 +387,27 @@ export const toggleBranding = mutation({
     }
     await ctx.db.patch(profile._id, {
       brandingEnabled: !profile.brandingEnabled,
+    });
+  },
+});
+
+/** Actualizar background image (PRO) */
+export const updateBackgroundImage = mutation({
+  args: {
+    userId: v.id("users"),
+    backgroundImageUrl: v.optional(v.string()),
+    backgroundOverlay: v.optional(v.number()),
+    backgroundBlurPx: v.optional(v.number()),
+  },
+  handler: async (ctx, { userId, backgroundImageUrl, backgroundOverlay, backgroundBlurPx }) => {
+    const profile = await requireOwnProfile(ctx, userId);
+    if (profile.plan !== "PRO") {
+      throw new ConvexError("Background image requiere Pro");
+    }
+    await ctx.db.patch(profile._id, {
+      backgroundImageUrl: backgroundImageUrl ?? undefined,
+      backgroundOverlay: Math.max(0, Math.min(0.85, backgroundOverlay ?? 0)),
+      backgroundBlurPx: Math.max(0, Math.min(24, backgroundBlurPx ?? 0)),
     });
   },
 });

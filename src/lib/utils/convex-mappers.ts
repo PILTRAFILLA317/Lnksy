@@ -2,6 +2,7 @@ import type {
   Profile,
   Link,
   LinkSection,
+  ProfileComponent,
   ProfileContact,
   Theme,
   Font,
@@ -32,6 +33,22 @@ export function mapProfile(doc: any): Profile {
     branding_enabled: doc.brandingEnabled,
     created_at: new Date(doc._creationTime).toISOString(),
     deleted_at: doc.deletedAt ? new Date(doc.deletedAt).toISOString() : null,
+    background_image_url: doc.backgroundImageUrl ?? null,
+    background_overlay: doc.backgroundOverlay ?? 0,
+    background_blur_px: doc.backgroundBlurPx ?? 0,
+  };
+}
+
+export function mapComponent(doc: any): ProfileComponent {
+  return {
+    id: doc._id,
+    profile_id: doc.profileId,
+    type: doc.type,
+    title: doc.title ?? null,
+    config: doc.config ?? {},
+    order_index: doc.orderIndex,
+    is_visible: doc.isVisible,
+    updated_at: new Date(doc.updatedAt).toISOString(),
   };
 }
 
@@ -39,7 +56,8 @@ export function mapLink(doc: any): Link {
   return {
     id: doc._id,
     profile_id: doc.profileId,
-    section_id: doc.sectionId,
+    component_id: doc.componentId ?? null,
+    section_id: doc.sectionId ?? null,
     title: doc.title,
     url: doc.url,
     subtitle: doc.subtitle ?? null,

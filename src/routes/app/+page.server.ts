@@ -5,7 +5,7 @@ import type { MainLinksLayout, HeaderMode } from '$lib/types.js';
 import { validateOverrides, filterOverridesByPlan } from '$lib/themes.js';
 import {
   mapLink,
-  mapLinkSection,
+  mapComponent,
   mapTheme,
   mapFont,
   mapBackground,
@@ -13,24 +13,22 @@ import {
 } from '$lib/utils/convex-mappers.js';
 import {
   canUseHero,
-  canUseCustomTitle,
   canUseImageLayouts,
   canUsePremiumFont,
   canUsePremiumBackground,
-  canRemoveBranding,
 } from '$lib/utils/plan.js';
 import type { Id } from '$convex/_generated/dataModel.js';
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
   const { profile } = await parent();
-  if (!profile) return { links: [], sections: [], themes: [], fonts: [], backgrounds: [], contacts: [] };
+  if (!profile) return { links: [], components: [], themes: [], fonts: [], backgrounds: [], contacts: [] };
 
   const profileId = profile.id as any;
 
-  const [links, sections, themes, fonts, backgrounds, contacts] =
+  const [links, components, themes, fonts, backgrounds, contacts] =
     await Promise.all([
       locals.convex.query(api.links.getByProfile, { profileId }),
-      locals.convex.query(api.sections.getByProfile, { profileId }),
+      locals.convex.query(api.components.getByProfile, { profileId }),
       locals.convex.query(api.themes.list, {}),
       locals.convex.query(api.fonts.list, {}),
       locals.convex.query(api.backgrounds.list, {}),
@@ -39,7 +37,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 
   return {
     links: (links ?? []).map(mapLink),
-    sections: (sections ?? []).map(mapLinkSection),
+    components: (components ?? []).map(mapComponent),
     themes: (themes ?? []).map(mapTheme),
     fonts: (fonts ?? []).map(mapFont),
     backgrounds: (backgrounds ?? []).map(mapBackground),
@@ -59,23 +57,23 @@ function getUserId(locals: App.Locals): Id<"users"> {
 }
 
 export const actions = {
-  // --- Link actions ---
+  // ─── Link actions ───────────────────────────────────────────
 
   addLink: async ({ request, locals }) => {
     const userId = getUserId(locals);
     const fd = await request.formData();
-    const sectionId = fd.get('sectionId') as string;
+    const componentId = fd.get('componentId') as string;
     const title = (fd.get('title') as string)?.trim();
     const url = (fd.get('url') as string)?.trim();
 
-    if (!title || !url || !sectionId) {
-      return fail(400, { error: 'Title, URL, and section are required' });
+    if (!title || !url || !componentId) {
+      return fail(400, { error: 'Title, URL, and component are required' });
     }
 
     try {
-      await locals.convex.mutation(api.links.add, {
+      await locals.convex.mutation(api.links.addToComponent, {
         userId,
-        sectionId: sectionId as any,
+        componentId: componentId as any,
         title,
         url,
         subtitle: (fd.get('subtitle') as string)?.trim() || undefined,
@@ -165,7 +163,7 @@ export const actions = {
     return { success: true };
   },
 
-  reorder: async ({ request, locals }) => {
+  reorderLinks: async ({ request, locals }) => {
     const userId = getUserId(locals);
     const fd = await request.formData();
     const orderJson = fd.get('order') as string;
@@ -180,36 +178,43 @@ export const actions = {
     return { success: true };
   },
 
-  // --- Section actions ---
+  // ─── Component actions ──────────────────────────────────────
 
-  addSection: async ({ request, locals }) => {
+  addComponent: async ({ request, locals }) => {
     const userId = getUserId(locals);
     const fd = await request.formData();
+    const type = fd.get('type') as string;
     const title = (fd.get('title') as string)?.trim() || undefined;
 
+    if (!type) return fail(400, { error: 'Component type is required' });
+
     try {
-      const sectionId = await locals.convex.mutation(api.sections.add, { userId, title });
-      return { success: true, sectionId };
+      const componentId = await locals.convex.mutation(api.components.add, {
+        userId,
+        type: type as any,
+        title,
+      });
+      return { success: true, componentId };
     } catch (e) {
-      return fail(400, { error: convexError(e) });
+      return fail(403, { error: convexError(e) });
     }
   },
 
-  updateSection: async ({ request, locals }) => {
+  updateComponent: async ({ request, locals }) => {
     const userId = getUserId(locals);
     const fd = await request.formData();
-    const sectionId = fd.get('sectionId') as string;
-    if (!sectionId) return fail(400, { error: 'Missing section ID' });
+    const componentId = fd.get('componentId') as string;
+    if (!componentId) return fail(400, { error: 'Missing component ID' });
 
-    const title = fd.get('title');
-    const isVisible = fd.get('isVisible');
+    const title = fd.get('title') as string | null;
+    const configRaw = fd.get('config') as string | null;
 
     try {
-      await locals.convex.mutation(api.sections.update, {
+      await locals.convex.mutation(api.components.update, {
         userId,
-        sectionId: sectionId as any,
-        title: title !== null ? ((title as string).trim() || undefined) : undefined,
-        isVisible: isVisible !== null ? isVisible === 'true' : undefined,
+        componentId: componentId as any,
+        title: title !== null ? title : undefined,
+        config: configRaw ? JSON.parse(configRaw) : undefined,
       });
     } catch (e) {
       return fail(400, { error: convexError(e) });
@@ -218,21 +223,34 @@ export const actions = {
     return { success: true };
   },
 
-  updateSectionLayout: async ({ request, locals }) => {
+  toggleComponent: async ({ request, locals }) => {
     const userId = getUserId(locals);
     const fd = await request.formData();
-    const sectionId = fd.get('sectionId') as string;
-    const layout = fd.get('layout') as MainLinksLayout;
-
-    if (!sectionId || !layout) {
-      return fail(400, { error: 'Missing section ID or layout' });
-    }
+    const componentId = fd.get('componentId') as string;
+    if (!componentId) return fail(400, { error: 'Missing component ID' });
 
     try {
-      await locals.convex.mutation(api.sections.updateLayout, {
+      await locals.convex.mutation(api.components.toggle, {
         userId,
-        sectionId: sectionId as any,
-        layout,
+        componentId: componentId as any,
+      });
+    } catch (e) {
+      return fail(400, { error: convexError(e) });
+    }
+
+    return { success: true };
+  },
+
+  duplicateComponent: async ({ request, locals }) => {
+    const userId = getUserId(locals);
+    const fd = await request.formData();
+    const componentId = fd.get('componentId') as string;
+    if (!componentId) return fail(400, { error: 'Missing component ID' });
+
+    try {
+      await locals.convex.mutation(api.components.duplicate, {
+        userId,
+        componentId: componentId as any,
       });
     } catch (e) {
       return fail(403, { error: convexError(e) });
@@ -241,50 +259,16 @@ export const actions = {
     return { success: true };
   },
 
-  deleteSection: async ({ request, locals }) => {
+  deleteComponent: async ({ request, locals }) => {
     const userId = getUserId(locals);
     const fd = await request.formData();
-    const sectionId = fd.get('sectionId') as string;
+    const componentId = fd.get('componentId') as string;
+    if (!componentId) return fail(400, { error: 'Missing component ID' });
 
     try {
-      await locals.convex.mutation(api.sections.remove, { userId, sectionId: sectionId as any });
-    } catch (e) {
-      return fail(400, { error: convexError(e) });
-    }
-
-    return { success: true };
-  },
-
-  reorderSections: async ({ request, locals }) => {
-    const userId = getUserId(locals);
-    const fd = await request.formData();
-    const orderJson = fd.get('order') as string;
-
-    try {
-      const order: string[] = JSON.parse(orderJson);
-      await locals.convex.mutation(api.sections.reorder, { userId, order: order as any });
-    } catch (e) {
-      return fail(400, { error: convexError(e) });
-    }
-
-    return { success: true };
-  },
-
-  moveLink: async ({ request, locals }) => {
-    const userId = getUserId(locals);
-    const fd = await request.formData();
-    const linkId = fd.get('linkId') as string;
-    const targetSectionId = fd.get('targetSectionId') as string;
-
-    if (!linkId || !targetSectionId) {
-      return fail(400, { error: 'Missing link or target section' });
-    }
-
-    try {
-      await locals.convex.mutation(api.links.moveToSection, {
+      await locals.convex.mutation(api.components.remove, {
         userId,
-        linkId: linkId as any,
-        targetSectionId: targetSectionId as any,
+        componentId: componentId as any,
       });
     } catch (e) {
       return fail(400, { error: convexError(e) });
@@ -293,7 +277,61 @@ export const actions = {
     return { success: true };
   },
 
-  // --- Appearance actions ---
+  reorderComponents: async ({ request, locals }) => {
+    const userId = getUserId(locals);
+    const fd = await request.formData();
+    const orderJson = fd.get('order') as string;
+
+    try {
+      const order: string[] = JSON.parse(orderJson);
+      await locals.convex.mutation(api.components.reorder, {
+        userId,
+        order: order as any,
+      });
+    } catch (e) {
+      return fail(400, { error: convexError(e) });
+    }
+
+    return { success: true };
+  },
+
+  moveComponentUp: async ({ request, locals }) => {
+    const userId = getUserId(locals);
+    const fd = await request.formData();
+    const componentId = fd.get('componentId') as string;
+    if (!componentId) return fail(400, { error: 'Missing component ID' });
+
+    try {
+      await locals.convex.mutation(api.components.moveUp, {
+        userId,
+        componentId: componentId as any,
+      });
+    } catch (e) {
+      return fail(400, { error: convexError(e) });
+    }
+
+    return { success: true };
+  },
+
+  moveComponentDown: async ({ request, locals }) => {
+    const userId = getUserId(locals);
+    const fd = await request.formData();
+    const componentId = fd.get('componentId') as string;
+    if (!componentId) return fail(400, { error: 'Missing component ID' });
+
+    try {
+      await locals.convex.mutation(api.components.moveDown, {
+        userId,
+        componentId: componentId as any,
+      });
+    } catch (e) {
+      return fail(400, { error: convexError(e) });
+    }
+
+    return { success: true };
+  },
+
+  // ─── Appearance actions ─────────────────────────────────────
 
   selectTheme: async ({ request, locals }) => {
     const userId = getUserId(locals);
@@ -362,6 +400,42 @@ export const actions = {
 
     try {
       await locals.convex.mutation(api.profiles.updateHero, { userId, heroUrl: heroUrl ?? '' });
+    } catch (e) {
+      return fail(500, { error: convexError(e) });
+    }
+
+    return { success: true };
+  },
+
+  uploadAvatar: async ({ request, locals }) => {
+    const userId = getUserId(locals);
+    const fd = await request.formData();
+    const file = fd.get('avatar') as File;
+
+    if (!file || file.size === 0) return fail(400, { error: 'No file' });
+    if (file.size > 2 * 1024 * 1024) return fail(400, { error: 'Max 2MB' });
+    if (!file.type.startsWith('image/')) return fail(400, { error: 'Must be an image' });
+
+    let uploadUrl: string;
+    try {
+      uploadUrl = await locals.convex.mutation(api.files.generateUploadUrl, { userId });
+    } catch (e) {
+      return fail(500, { error: 'Failed to get upload URL' });
+    }
+
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    });
+
+    if (!uploadRes.ok) return fail(500, { error: 'Upload failed' });
+
+    const { storageId } = await uploadRes.json();
+    const avatarUrl = await locals.convex.mutation(api.files.getFileUrl, { storageId });
+
+    try {
+      await locals.convex.mutation(api.profiles.updateAvatar, { userId, avatarUrl: avatarUrl ?? '' });
     } catch (e) {
       return fail(500, { error: convexError(e) });
     }
@@ -508,6 +582,69 @@ export const actions = {
 
     try {
       await locals.convex.mutation(api.profiles.toggleBranding, { userId });
+    } catch (e) {
+      return fail(403, { error: convexError(e) });
+    }
+
+    return { success: true };
+  },
+
+  // ── Background image (PRO) ───────────────────────────────
+  uploadBackgroundImage: async ({ request, locals }) => {
+    const userId = getUserId(locals);
+    const fd = await request.formData();
+    const file = fd.get('bgImage') as File;
+
+    if (!file || file.size === 0) return fail(400, { error: 'No file' });
+    if (file.size > 8 * 1024 * 1024) return fail(400, { error: 'Max 8MB' });
+    if (!file.type.startsWith('image/')) return fail(400, { error: 'Must be an image' });
+
+    let uploadUrl: string;
+    try {
+      uploadUrl = await locals.convex.mutation(api.files.generateUploadUrl, { userId });
+    } catch (e) {
+      return fail(500, { error: 'Failed to get upload URL' });
+    }
+
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    });
+    if (!uploadRes.ok) return fail(500, { error: 'Upload failed' });
+
+    const { storageId } = await uploadRes.json();
+    const imageUrl = await locals.convex.mutation(api.files.getFileUrl, { storageId });
+
+    try {
+      await locals.convex.mutation(api.profiles.updateBackgroundImage, {
+        userId,
+        backgroundImageUrl: imageUrl ?? '',
+        backgroundOverlay: 0,
+        backgroundBlurPx: 0,
+      });
+    } catch (e) {
+      return fail(403, { error: convexError(e) });
+    }
+
+    return { success: true };
+  },
+
+  updateBackgroundSettings: async ({ request, locals }) => {
+    const userId = getUserId(locals);
+    const fd = await request.formData();
+    const overlay = parseFloat(fd.get('overlay') as string ?? '0');
+    const blur = parseFloat(fd.get('blur') as string ?? '0');
+    const removeImage = fd.get('removeImage') === '1';
+
+    try {
+      const profileDoc = await locals.convex.query(api.profiles.getOwn, { userId });
+      await locals.convex.mutation(api.profiles.updateBackgroundImage, {
+        userId,
+        backgroundImageUrl: removeImage ? undefined : (profileDoc?.backgroundImageUrl ?? undefined),
+        backgroundOverlay: overlay,
+        backgroundBlurPx: blur,
+      });
     } catch (e) {
       return fail(403, { error: convexError(e) });
     }

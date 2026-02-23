@@ -28,6 +28,29 @@ export interface Profile {
   branding_enabled: boolean;
   created_at: string;
   deleted_at: string | null;
+  // PRO: background image layer
+  background_image_url: string | null;
+  background_overlay: number;   // 0..0.85
+  background_blur_px: number;   // 0..24
+}
+
+// --- Components ---
+
+export type ComponentType = 'links' | 'youtube' | 'spotify' | 'divider' | 'text';
+
+export interface ProfileComponent {
+  id: string;
+  profile_id: string;
+  type: ComponentType;
+  title: string | null;
+  config: Record<string, any>;
+  order_index: number;
+  is_visible: boolean;
+  updated_at: string;
+}
+
+export interface ProfileComponentWithLinks extends ProfileComponent {
+  links: Link[];
 }
 
 // --- Link Sections ---
@@ -53,7 +76,8 @@ export interface LinkSectionWithLinks extends LinkSection {
 export interface Link {
   id: string;
   profile_id: string;
-  section_id: string;
+  component_id: string | null;
+  section_id: string | null;
   title: string;
   url: string;
   subtitle: string | null;
@@ -100,29 +124,46 @@ export interface Theme {
 }
 
 export interface ThemeConfig {
-  // Core colors
+  // ── Core colors ──────────────────────────────────────────────
   bg: string;
   text: string;
-  muted?: string;         // Secondary/muted text color
-  accent?: string;        // Accent / highlight color
+  muted?: string;
+  accent?: string;
 
-  // Cards
+  // ── Cards / link surfaces ────────────────────────────────────
   cardBg: string;
   cardText: string;
   cardBorder: string;
   cardRadius: string;
-  cardShadow?: string;    // CSS box-shadow value
+  cardShadow?: string;
 
-  // Buttons
-  buttonVariant: 'filled' | 'outline';
-  buttonRadius?: string;  // Falls back to cardRadius if omitted
+  // ── Buttons ──────────────────────────────────────────────────
+  /** 'filled'|'outline' existing; 'soft'|'glass' new variants */
+  buttonVariant: 'filled' | 'outline' | 'soft' | 'glass';
+  buttonRadius?: string;
 
-  // Typography
+  // ── Typography ───────────────────────────────────────────────
   font: string;
 
-  // Effects
+  // ── Effects ──────────────────────────────────────────────────
   backdropBlur?: string;
   shadowIntensity?: 'none' | 'soft' | 'medium' | 'strong';
+
+  // ── Visual style tokens (NEW) ────────────────────────────────
+  /** Overall card surface look */
+  surfaceVariant?: 'flat' | 'card' | 'glass';
+  /** Link button style override */
+  linkVariant?: 'flat' | 'card';
+  /** Icon color mode — PRO-gated at render time */
+  iconStyle?: 'mono' | 'brand';
+  /** Vertical spacing density */
+  density?: 'compact' | 'comfortable';
+
+  // ── Background preset (embedded in theme) ────────────────────
+  backgroundPreset?: {
+    type: 'solid' | 'gradient' | 'pattern';
+    value: string;
+  };
 }
 
 // Keys allowed in user overrides (security whitelist)
@@ -135,7 +176,8 @@ export type OverrideKey =
   | 'cardRadius'
   | 'buttonVariant'
   | 'buttonRadius'
-  | 'shadowIntensity';
+  | 'shadowIntensity'
+  | 'iconStyle';
 
 export type ThemeOverrides = Partial<Pick<ThemeConfig, OverrideKey>>;
 
@@ -210,6 +252,7 @@ export interface HandleValidation {
 // --- Constants ---
 
 export const FREE_LINK_LIMIT = 25;
+export const FREE_COMPONENT_LIMIT = 6;
 export const FREE_THEME_COUNT = 3;
 export const PRO_LAYOUTS: MainLinksLayout[] = [
   'GRID_IMAGE',
@@ -220,9 +263,15 @@ export const FREE_LAYOUTS: MainLinksLayout[] = [
   'GRID_ICON',
 ];
 
+// Classic tags (existing) + new tags
 export const ALL_THEME_TAGS = [
+  // classic
   'dark', 'light', 'gradient', 'glass', 'pastel',
   'neon', 'minimal', 'bold', 'warm', 'cool', 'nature', 'brutalist',
+  // new
+  'pill', 'sharp', 'soft-shadow', 'no-shadow', 'high-contrast',
+  'monochrome', 'brand-icons', 'outline', 'card', 'flat',
+  'creator', 'business',
 ] as const;
 
 export type ThemeTag = typeof ALL_THEME_TAGS[number];

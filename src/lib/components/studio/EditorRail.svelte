@@ -14,17 +14,16 @@
   };
 
   const editorItems: RailItem[] = [
-    { id: 'links', icon: 'links' },
+    { id: 'components', icon: 'components' },
     { id: 'header', icon: 'header' },
     { id: 'title', icon: 'title' },
     { id: 'contacts', icon: 'contacts' },
   ];
 
   const appearanceItems: RailItem[] = [
-    { id: 'themes', icon: 'themes' },
-    { id: 'background', icon: 'background' },
+    { id: 'appearance', icon: 'appearance' },
+    { id: 'customize', icon: 'customize' },
     { id: 'fonts', icon: 'fonts' },
-    { id: 'colors', icon: 'colors' },
     { id: 'branding', icon: 'branding' },
   ];
 
@@ -38,13 +37,26 @@
 </script>
 
 {#snippet railIcon(icon: string)}
-  {#if icon === 'links'}
+  {#if icon === 'appearance'}
     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
       stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round"
-        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0
-           105.656 5.656l1.102-1.101m-.758-4.899a4 4 0
-           005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.55 0 1-.45 1-1v-.5c0-.28-.11-.53-.29-.71-.17-.17-.29-.42-.29-.71
+           0-.55.45-1 1-1h1.5c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z" />
+      <circle cx="6.5" cy="11.5" r="1.5" fill="currentColor" stroke="none"/>
+      <circle cx="9.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"/>
+      <circle cx="14.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"/>
+      <circle cx="17.5" cy="11.5" r="1.5" fill="currentColor" stroke="none"/>
+    </svg>
+  {:else if icon === 'components'}
+    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+      stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0
+           01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0
+           01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0
+           012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0
+           012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
     </svg>
   {:else if icon === 'header'}
     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
@@ -94,12 +106,11 @@
            011-1h2a1 1 0 011 1v6a1 1 0
            01-1 1h-2a1 1 0 01-1-1v-6z" />
     </svg>
-  {:else if icon === 'background'}
+  {:else if icon === 'customize'}
     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
       stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round"
-        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21
-           12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+        d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
     </svg>
   {:else if icon === 'fonts'}
     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"

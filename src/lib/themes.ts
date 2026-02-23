@@ -16,6 +16,7 @@ export function resolveThemeConfig(
 // ---------------------------------------------------------------------------
 
 export function themeToCSS(config: ThemeConfig): string {
+  const shadow = getCardShadow(config);
   const vars: string[] = [
     `--lnksy-bg: ${config.bg}`,
     `--lnksy-text: ${config.text}`,
@@ -25,10 +26,13 @@ export function themeToCSS(config: ThemeConfig): string {
     `--lnksy-card-text: ${config.cardText}`,
     `--lnksy-card-border: ${config.cardBorder}`,
     `--lnksy-card-radius: ${config.cardRadius}`,
-    `--lnksy-card-shadow: ${config.cardShadow ?? 'none'}`,
+    `--lnksy-card-shadow: ${shadow}`,
     `--lnksy-button-radius: ${config.buttonRadius ?? config.cardRadius}`,
     `--lnksy-font: ${config.font}`,
     `--lnksy-backdrop-blur: ${config.backdropBlur ?? '0px'}`,
+    // New tokens
+    `--lnksy-surface: ${config.surfaceVariant ?? 'card'}`,
+    `--lnksy-density: ${config.density ?? 'comfortable'}`,
   ];
   return vars.join('; ');
 }
@@ -68,13 +72,14 @@ export const OVERRIDE_WHITELIST: Record<OverrideKey, RegExp> = {
   cardBg: new RegExp(`^(${SAFE_HEX.source}|transparent)$`),
   cardText: SAFE_HEX,
   cardRadius: SAFE_RADIUS,
-  buttonVariant: /^(filled|outline)$/,
+  buttonVariant: /^(filled|outline|soft|glass)$/,
   buttonRadius: SAFE_RADIUS,
   shadowIntensity: /^(none|soft|medium|strong)$/,
+  iconStyle: /^(mono|brand)$/,
 };
 
 /** Keys FREE users may override */
-export const FREE_OVERRIDE_KEYS: OverrideKey[] = ['accent', 'cardRadius'];
+export const FREE_OVERRIDE_KEYS: OverrideKey[] = ['accent', 'cardRadius', 'buttonRadius'];
 
 /** Keys PRO users may override */
 export const PRO_OVERRIDE_KEYS: OverrideKey[] = Object.keys(

@@ -31,8 +31,9 @@
   let localCardBg = $state('#f3f4f6');
   let localCardText = $state('#1a1a1a');
   let localRadius = $state('12px');
-  let localButtonVariant = $state<'filled' | 'outline'>('filled');
+  let localButtonVariant = $state<'filled' | 'outline' | 'soft' | 'glass'>('filled');
   let localShadow = $state<'none' | 'soft' | 'medium' | 'strong'>('soft');
+  let localIconStyle = $state<'mono' | 'brand'>('mono');
 
   // Sync from merged config whenever theme or overrides change
   $effect(() => {
@@ -46,6 +47,7 @@
     localRadius = m.cardRadius ?? '12px';
     localButtonVariant = m.buttonVariant ?? 'filled';
     localShadow = m.shadowIntensity ?? 'soft';
+    localIconStyle = m.iconStyle ?? 'mono';
   });
 
   // Contrast warnings
@@ -347,6 +349,57 @@
             </label>
           {/each}
         </div>
+      </section>
+
+      <!-- Icon style (PRO: brand icons) -->
+      <section class="space-y-2.5">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          Icon style
+          <span class="ml-1 text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-bold">PRO</span>
+        </p>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="cursor-pointer">
+            <input type="radio" name="override_iconStyle" value="mono"
+              bind:group={localIconStyle} class="sr-only" />
+            <span
+              class="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2
+                transition-all text-center
+                {localIconStyle === 'mono'
+                  ? 'border-indigo-600 bg-indigo-50'
+                  : 'border-gray-200 hover:border-gray-300'}"
+            >
+              <svg class="w-5 h-5 {localIconStyle === 'mono' ? 'text-indigo-600' : 'text-gray-400'}"
+                viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+              </svg>
+              <span class="text-xs font-medium
+                {localIconStyle === 'mono' ? 'text-indigo-700' : 'text-gray-600'}">
+                Mono
+              </span>
+            </span>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="override_iconStyle" value="brand"
+              bind:group={localIconStyle} class="sr-only" />
+            <span
+              class="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2
+                transition-all text-center
+                {localIconStyle === 'brand'
+                  ? 'border-indigo-600 bg-indigo-50'
+                  : 'border-gray-200 hover:border-gray-300'}"
+            >
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none">
+                <circle cx="8" cy="12" r="4" fill="#1DA1F2"/>
+                <circle cx="16" cy="12" r="4" fill="#E1306C"/>
+              </svg>
+              <span class="text-xs font-medium
+                {localIconStyle === 'brand' ? 'text-indigo-700' : 'text-gray-600'}">
+                Brand
+              </span>
+            </span>
+          </label>
+        </div>
+        <p class="text-[10px] text-gray-400">Brand colors shown on social icons</p>
       </section>
 
       <!-- Save button -->

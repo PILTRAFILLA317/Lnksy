@@ -55,7 +55,7 @@ export default defineSchema({
     displayTitle: v.optional(v.string()),
     themeId: v.string(),
     themeOverrides: v.any(),
-    backgroundId: v.string(),
+    backgroundId: v.optional(v.string()),
     fontId: v.string(),
     mainLinksLayout: v.union(
       v.literal("LIST_ICON"),
@@ -66,11 +66,33 @@ export default defineSchema({
     plan: v.union(v.literal("FREE"), v.literal("PRO")),
     brandingEnabled: v.boolean(),
     deletedAt: v.optional(v.number()),
+    // PRO: background image layer
+    backgroundImageUrl: v.optional(v.string()),
+    backgroundOverlay: v.optional(v.number()),   // 0..0.85
+    backgroundBlurPx: v.optional(v.number()),    // 0..24
   })
     .index("by_owner", ["ownerId"])
     .index("by_handle", ["handle"]),
 
+  // ─── profileComponents ─────────────────────────────────────
+  profileComponents: defineTable({
+    profileId: v.id("profiles"),
+    type: v.union(
+      v.literal("links"),
+      v.literal("youtube"),
+      v.literal("spotify"),
+      v.literal("divider"),
+      v.literal("text"),
+    ),
+    title: v.optional(v.string()),
+    config: v.any(),
+    orderIndex: v.number(),
+    isVisible: v.boolean(),
+    updatedAt: v.number(),
+  }).index("by_profile", ["profileId", "orderIndex"]),
+
   // ─── linkSections ──────────────────────────────────────────
+  // Kept for backward-compat during migration; new code uses profileComponents
   linkSections: defineTable({
     profileId: v.id("profiles"),
     title: v.optional(v.string()),
@@ -89,7 +111,10 @@ export default defineSchema({
   // ─── links ─────────────────────────────────────────────────
   links: defineTable({
     profileId: v.id("profiles"),
-    sectionId: v.id("linkSections"),
+    // componentId: preferred foreign key after migration
+    componentId: v.optional(v.id("profileComponents")),
+    // sectionId: legacy foreign key; kept for migration compatibility
+    sectionId: v.optional(v.id("linkSections")),
     title: v.string(),
     url: v.string(),
     subtitle: v.optional(v.string()),
@@ -104,7 +129,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_profile", ["profileId", "orderIndex"])
-    .index("by_section", ["sectionId", "orderIndex"]),
+    .index("by_section", ["sectionId", "orderIndex"])
+    .index("by_component", ["componentId", "orderIndex"]),
 
   // ─── profileContacts ───────────────────────────────────────
   profileContacts: defineTable({

@@ -9,35 +9,32 @@ import type {
 export type BottomTab = 'editor' | 'appearance' | 'analytics' | 'billing' | 'settings';
 
 export type EditorPanel =
-  | 'links'
+  | 'components'
   | 'header'
   | 'title'
   | 'contacts'
-  | 'themes'
-  | 'background'
+  | 'appearance'
+  | 'customize'
   | 'fonts'
-  | 'colors'
   | 'branding'
   | null;
 
-const EDITOR_PANELS: NonNullable<EditorPanel>[] = ['links', 'header', 'title', 'contacts'];
+const EDITOR_PANELS: NonNullable<EditorPanel>[] = ['components', 'header', 'title', 'contacts'];
 const APPEARANCE_PANELS: NonNullable<EditorPanel>[] = [
-  'themes',
-  'background',
+  'appearance',
+  'customize',
   'fonts',
-  'colors',
   'branding',
 ];
 
 export const PANEL_LABELS: Record<NonNullable<EditorPanel>, string> = {
-  links: 'Links',
+  components: 'Components',
   header: 'Header',
   title: 'Title & Bio',
   contacts: 'Contact Buttons',
-  themes: 'Themes',
-  background: 'Background',
+  appearance: 'Appearance',
+  customize: 'Customize',
   fonts: 'Fonts',
-  colors: 'Customize',
   branding: 'Branding',
 };
 
@@ -46,7 +43,7 @@ export const SECTION_TO_PANEL: Record<string, NonNullable<EditorPanel>> = {
   'header-media': 'header',
   'title-bio': 'title',
   contacts: 'contacts',
-  'main-links': 'links',
+  'main-links': 'components',
 };
 
 class StudioState {

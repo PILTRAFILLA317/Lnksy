@@ -1,34 +1,34 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
-  import { page } from '$app/state';
-  import { goto } from '$app/navigation';
-  import { studio } from '$lib/stores/studio.svelte.js';
-  import BottomNav from '$lib/components/studio/BottomNav.svelte';
+  import type { Snippet } from "svelte";
+  import { page } from "$app/state";
+  import { goto } from "$app/navigation";
+  import { studio } from "$lib/stores/studio.svelte.js";
+  import BottomNav from "$lib/components/studio/BottomNav.svelte";
 
   interface Props {
-    data: import('./$types.js').LayoutServerData;
+    data: import("./$types.js").LayoutServerData;
     children: Snippet;
   }
 
   let { data, children }: Props = $props();
 
   const isOnboarding = $derived(
-    page.url.pathname.startsWith('/app/onboarding'),
+    page.url.pathname.startsWith("/app/onboarding"),
   );
 
-  const isStudioPage = $derived(page.url.pathname === '/app');
+  const isStudioPage = $derived(page.url.pathname === "/app");
 
   // Sync bottom tab with route (for non-studio routes)
   $effect(() => {
     const path = page.url.pathname;
-    if (path === '/app/analytics') studio.setTab('analytics');
-    else if (path === '/app/billing') studio.setTab('billing');
-    else if (path === '/app/settings') studio.setTab('settings');
+    if (path === "/app/analytics") studio.setTab("analytics");
+    else if (path === "/app/billing") studio.setTab("billing");
+    else if (path === "/app/settings") studio.setTab("settings");
   });
 
   async function signOut() {
-    await fetch('/auth/signout', { method: 'POST' });
-    goto('/');
+    await fetch("/auth/signout", { method: "POST" });
+    goto("/");
   }
 </script>
 
@@ -37,9 +37,7 @@
 {:else}
   <div class="h-screen flex flex-col bg-gray-50 overflow-hidden">
     <!-- Top bar -->
-    <header
-      class="bg-white border-b border-gray-200 px-4 py-2.5 shrink-0 z-30"
-    >
+    <header class="bg-white border-b border-gray-200 px-4 py-2.5 shrink-0 z-30">
       <div class="flex items-center justify-between">
         <a href="/app" class="text-lg font-bold text-gray-900"> Lnksy </a>
         <div class="flex items-center gap-3">
@@ -65,8 +63,8 @@
 
     <!-- Main content area -->
     <main
-      class="flex-1 min-h-0 overflow-hidden
-        {isStudioPage ? '' : 'overflow-y-auto'}"
+      class="flex-1 min-h-0
+        {isStudioPage ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'}"
     >
       {#if isStudioPage}
         <!-- Studio page gets full control of its space -->

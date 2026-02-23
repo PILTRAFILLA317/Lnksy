@@ -21,7 +21,7 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <div
-  class="flex flex-col h-full max-h-[85vh] lg:max-h-full"
+  class="flex flex-col flex-1 min-h-0 overflow-hidden"
   role="dialog"
   aria-label={title}
 >
@@ -47,7 +47,7 @@
   </div>
 
   <!-- Scrollable content -->
-  <div class="flex-1 overflow-y-auto px-4 py-4 overscroll-contain">
+  <div class="flex-1 min-h-0 overflow-y-auto px-4 py-4 overscroll-contain">
     {@render children()}
   </div>
 

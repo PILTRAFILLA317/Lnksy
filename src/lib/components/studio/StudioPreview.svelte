@@ -3,7 +3,7 @@
   import { dev } from "$app/environment";
   import { page } from "$app/state";
   import { studio, SECTION_TO_PANEL } from "$lib/stores/studio.svelte.js";
-  import { resolveThemeConfig, isGradient } from "$lib/themes.js";
+  import { resolveThemeConfig } from "$lib/themes.js";
   import { isLinkVisible } from "$lib/utils/helpers.js";
   import {
     resolveEffectiveProfile,
@@ -13,23 +13,27 @@
   import HeaderMediaSection from "$lib/components/sections/HeaderMediaSection.svelte";
   import TitleSection from "$lib/components/sections/TitleSection.svelte";
   import ContactSection from "$lib/components/sections/ContactSection.svelte";
-  import MainLinksSection from "$lib/components/sections/MainLinksSection.svelte";
+  import LinksBlock from "$lib/components/blocks/LinksBlock.svelte";
+  import YouTubeBlock from "$lib/components/blocks/YouTubeBlock.svelte";
+  import SpotifyBlock from "$lib/components/blocks/SpotifyBlock.svelte";
+  import TextBlock from "$lib/components/blocks/TextBlock.svelte";
+  import DividerBlock from "$lib/components/blocks/DividerBlock.svelte";
   import type {
     Profile,
     Link,
-    LinkSection,
+    ProfileComponent,
+    ProfileComponentWithLinks,
     Theme,
     Font,
     Background,
     ProfileContact,
     ThemeConfig,
-    LinkSectionWithLinks,
   } from "$lib/types.js";
 
   interface Props {
     profile: Profile;
     links: Link[];
-    sections: LinkSection[];
+    components: ProfileComponent[];
     themes: Theme[];
     contacts: ProfileContact[];
     fonts: Font[];
@@ -40,7 +44,7 @@
   let {
     profile,
     links,
-    sections,
+    components,
     themes,
     contacts,
     fonts,
@@ -68,19 +72,33 @@
   const visibleLinks = $derived(links.filter((l: Link) => isLinkVisible(l)));
   const effective = $derived(resolveEffectiveProfile(profile));
 
-  const sectionsWithLinks: LinkSectionWithLinks[] = $derived.by(() => {
-    const linksBySection = new Map<string, Link[]>();
+  // Group visible links by component_id
+  const componentsWithLinks: ProfileComponentWithLinks[] = $derived.by(() => {
+    const linksByComponent = new Map<string, Link[]>();
     for (const link of visibleLinks) {
-      const existing = linksBySection.get(link.section_id) ?? [];
+      if (!link.component_id) continue;
+      const existing = linksByComponent.get(link.component_id) ?? [];
       existing.push(link);
-      linksBySection.set(link.section_id, existing);
+      linksByComponent.set(link.component_id, existing);
     }
 
-    return sections.map((s) => ({
-      ...s,
-      layout: resolveEffectiveSectionLayout(profile.plan, s.layout),
-      links: linksBySection.get(s.id) ?? [],
-    }));
+    return components
+      .filter((c) => c.is_visible)
+      .map((c) => ({
+        ...c,
+        // Apply plan-based layout gating for links components
+        config:
+          c.type === "links"
+            ? {
+                ...c.config,
+                layout: resolveEffectiveSectionLayout(
+                  profile.plan,
+                  c.config?.layout ?? "LIST_ICON",
+                ),
+              }
+            : c.config,
+        links: c.type === "links" ? (linksByComponent.get(c.id) ?? []) : [],
+      })) as ProfileComponentWithLinks[];
   });
 
   const currentFont = $derived(
@@ -107,6 +125,13 @@
   const pageFont = $derived(
     effectiveFont ? effectiveFont.family : (themeConfig?.font ?? "system-ui"),
   );
+
+  // PRO background image (gated by plan)
+  const bgImageUrl = $derived(
+    isPro ? (profile.background_image_url ?? null) : null,
+  );
+  const bgOverlay = $derived(isPro ? (profile.background_overlay ?? 0) : 0);
+  const bgBlurPx = $derived(isPro ? (profile.background_blur_px ?? 0) : 0);
 
   const isMobileReal = $derived(viewportWidth < 768);
   const showDebugOverlay = $derived(
@@ -209,24 +234,87 @@
   }
 </script>
 
+{#snippet componentBlocks(cfg: { themeConfig: ThemeConfig })}
+  {#each componentsWithLinks as comp (comp.id)}
+    {#if comp.type === "links"}
+      <div
+        data-studio-section="main-links"
+        class="studio-section w-full cursor-pointer"
+        class:studio-section-active={studio.openPanel === "components"}
+      >
+        <LinksBlock component={comp} themeConfig={cfg.themeConfig} {isPro} />
+      </div>
+    {:else if comp.type === "youtube"}
+      <div
+        data-studio-section="main-links"
+        class="studio-section w-full cursor-pointer"
+        class:studio-section-active={studio.openPanel === "components"}
+      >
+        <YouTubeBlock config={comp.config} title={comp.title} />
+      </div>
+    {:else if comp.type === "spotify"}
+      <div
+        data-studio-section="main-links"
+        class="studio-section w-full cursor-pointer"
+        class:studio-section-active={studio.openPanel === "components"}
+      >
+        <SpotifyBlock config={comp.config} title={comp.title} />
+      </div>
+    {:else if comp.type === "text"}
+      <div
+        data-studio-section="main-links"
+        class="studio-section w-full cursor-pointer"
+        class:studio-section-active={studio.openPanel === "components"}
+      >
+        <TextBlock
+          config={comp.config}
+          title={comp.title}
+          textColor={cfg.themeConfig.text}
+        />
+      </div>
+    {:else if comp.type === "divider"}
+      <DividerBlock config={comp.config} />
+    {/if}
+  {/each}
+{/snippet}
+
 <div class="studio-preview-shell">
   <div class="preview-fit-area" bind:this={fitAreaEl}>
     {#if themeConfig && effective}
-      {@const bgIsGradient = isGradient(pageBg)}
       {#if isMobileReal}
         <div
           bind:this={mobileSurfaceEl}
           class="preview-mobile-surface"
-          style="{bgIsGradient
-            ? `background: ${pageBg}`
-            : `background-color: ${pageBg}`};
+          style="background: {pageBg};
             color: {themeConfig.text};
-            font-family: '{pageFont}', system-ui, sans-serif;"
+            font-family: '{pageFont}', system-ui, sans-serif;
+            position: relative;"
         >
+          {#if bgImageUrl}
+            <div
+              class="absolute inset-0 overflow-hidden pointer-events-none"
+              style="z-index:0;"
+            >
+              <div
+                class="absolute inset-0"
+                style="background-image: url('{bgImageUrl}'); background-size: cover; background-position: center; {bgBlurPx >
+                0
+                  ? `filter: blur(${bgBlurPx}px); transform: scale(1.08);`
+                  : ''}"
+              ></div>
+              {#if bgOverlay > 0}
+                <div
+                  class="absolute inset-0"
+                  style="background: rgba(0,0,0,{bgOverlay});"
+                ></div>
+              {/if}
+            </div>
+          {/if}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div
             class="h-full overflow-y-auto overscroll-contain studio-preview"
+            style="position: relative; z-index: 1;"
             onclick={handlePreviewClick}
           >
             <div
@@ -270,26 +358,7 @@
                 />
               </div>
 
-              <div
-                data-studio-section="main-links"
-                class="studio-section w-full cursor-pointer"
-                class:studio-section-active={studio.openPanel === "links"}
-              >
-                {#each sectionsWithLinks as section (section.id)}
-                  {#if section.title}
-                    <h2
-                      class="w-full px-4 mt-3 mb-1 text-sm font-semibold opacity-70"
-                    >
-                      {section.title}
-                    </h2>
-                  {/if}
-                  <MainLinksSection
-                    links={section.links}
-                    layout={section.layout}
-                    {themeConfig}
-                  />
-                {/each}
-              </div>
+              {@render componentBlocks({ themeConfig })}
 
               {#if profile.branding_enabled}
                 <p class="mt-auto pt-10 pb-6 text-xs opacity-30">
@@ -305,17 +374,39 @@
           style="width:{screenWidth}px;height:{screenHeight}px;"
         >
           <div class="mockup-phone-camera"></div>
-          <div class="mockup-phone-display studio-display">
+          <div
+            class="mockup-phone-display studio-display"
+            style="position: relative;"
+          >
+            {#if bgImageUrl}
+              <div
+                class="absolute inset-0 overflow-hidden pointer-events-none"
+                style="z-index:0;"
+              >
+                <div
+                  class="absolute inset-0"
+                  style="background-image: url('{bgImageUrl}'); background-size: cover; background-position: center; {bgBlurPx >
+                  0
+                    ? `filter: blur(${bgBlurPx}px); transform: scale(1.08);`
+                    : ''}"
+                ></div>
+                {#if bgOverlay > 0}
+                  <div
+                    class="absolute inset-0"
+                    style="background: rgba(0,0,0,{bgOverlay});"
+                  ></div>
+                {/if}
+              </div>
+            {/if}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
               class="h-full overflow-y-auto overscroll-contain studio-preview"
               onclick={handlePreviewClick}
-              style="{bgIsGradient
-                ? `background: ${pageBg}`
-                : `background-color: ${pageBg}`};
+              style="background: {pageBg};
                 color: {themeConfig.text};
-                font-family: '{pageFont}', system-ui, sans-serif;"
+                font-family: '{pageFont}', system-ui, sans-serif;
+                position: relative; z-index: 1;"
             >
               <div
                 class="w-full max-w-md mx-auto min-h-full flex flex-col items-center gap-0 pb-6"
@@ -360,26 +451,7 @@
                   />
                 </div>
 
-                <div
-                  data-studio-section="main-links"
-                  class="studio-section w-full cursor-pointer"
-                  class:studio-section-active={studio.openPanel === "links"}
-                >
-                  {#each sectionsWithLinks as section (section.id)}
-                    {#if section.title}
-                      <h2
-                        class="w-full px-4 mt-3 mb-1 text-sm font-semibold opacity-70"
-                      >
-                        {section.title}
-                      </h2>
-                    {/if}
-                    <MainLinksSection
-                      links={section.links}
-                      layout={section.layout}
-                      {themeConfig}
-                    />
-                  {/each}
-                </div>
+                {@render componentBlocks({ themeConfig })}
 
                 {#if profile.branding_enabled}
                   <p class="mt-auto pt-10 pb-6 text-xs opacity-30">
@@ -405,21 +477,30 @@
 
 <style>
   .studio-preview-shell {
-    width: 100%;
-    height: 100%;
-    min-height: 0;
-    display: block;
+    position: absolute;
+    inset: 0;
   }
 
   .preview-fit-area {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    min-height: 0;
+    position: absolute;
+    inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
+  }
+
+  /* Padding only for phone mockup view (≥ 768px) */
+  @media (min-width: 768px) {
+    .preview-fit-area {
+      padding: 1.25rem 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .preview-fit-area {
+      padding: 1.5rem 2.5rem;
+    }
   }
 
   .phone-status-bar {
@@ -429,10 +510,8 @@
   }
 
   .preview-mobile-surface {
-    width: 100%;
-    height: 100%;
-    max-width: 100%;
-    border-radius: 0;
+    position: absolute;
+    inset: 0;
     overflow: hidden;
   }
 

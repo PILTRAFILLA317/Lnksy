@@ -1,31 +1,35 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { resolveThemeConfig, isGradient } from '$lib/themes.js';
+  import { resolveThemeConfig } from '$lib/themes.js';
   import { generateAnonId } from '$lib/utils/helpers.js';
   import type {
     ThemeConfig,
-    Link,
     Profile,
     Theme,
     Font,
     Background,
     ProfileContact,
-    LinkSectionWithLinks,
+    ProfileComponentWithLinks,
   } from '$lib/types.js';
   import HeaderMediaSection from '$lib/components/sections/HeaderMediaSection.svelte';
   import TitleSection from '$lib/components/sections/TitleSection.svelte';
   import ContactSection from '$lib/components/sections/ContactSection.svelte';
-  import MainLinksSection from '$lib/components/sections/MainLinksSection.svelte';
+  import LinksBlock from '$lib/components/blocks/LinksBlock.svelte';
+  import YouTubeBlock from '$lib/components/blocks/YouTubeBlock.svelte';
+  import SpotifyBlock from '$lib/components/blocks/SpotifyBlock.svelte';
+  import TextBlock from '$lib/components/blocks/TextBlock.svelte';
+  import DividerBlock from '$lib/components/blocks/DividerBlock.svelte';
 
   let { data } = $props();
 
   const profile = $derived(data.profile as Profile);
   const effective = $derived(data.effective);
-  const sections = $derived(data.sections as LinkSectionWithLinks[]);
+  const components = $derived(data.components as ProfileComponentWithLinks[]);
   const theme = $derived(data.theme as Theme | null);
   const contacts = $derived(data.contacts as ProfileContact[]);
   const font = $derived(data.font as Font | null);
   const background = $derived(data.background as Background | null);
+  const isPro = $derived((data.profile as Profile)?.plan === 'PRO');
 
   const themeConfig = $derived(
     theme
@@ -47,6 +51,11 @@
     if (font) return font.family;
     return themeConfig?.font ?? 'system-ui';
   });
+
+  // PRO: background image (gated server-side; only present if plan === PRO)
+  const bgImageUrl = $derived(data.bgImageUrl as string | null ?? null);
+  const bgOverlay = $derived(data.bgOverlay as number ?? 0);
+  const bgBlurPx = $derived(data.bgBlurPx as number ?? 0);
 
   onMount(() => {
     const anonId = generateAnonId();
@@ -75,6 +84,7 @@
             type: 'link_click',
             profileId: profile.id,
             linkId: link.dataset.linkId,
+            componentId: link.dataset.componentId,
             anonId,
           }),
         });
@@ -118,17 +128,38 @@
 {#if themeConfig}
   {@const bgValue = pageBg()}
   {@const fontFamily = pageFont()}
-  {@const bgIsGradient = isGradient(bgValue)}
+
   <div
-    class="min-h-screen flex flex-col items-center"
+    class="relative min-h-screen flex flex-col items-center overflow-x-hidden"
     style="
-      {bgIsGradient
-      ? `background: ${bgValue}`
-      : `background-color: ${bgValue}`};
+      background: {bgValue};
       color: {themeConfig.text};
       font-family: '{fontFamily}', system-ui, sans-serif;
     "
   >
+    <!-- PRO: Background image layer (fixed behind content) -->
+    {#if bgImageUrl}
+      <div class="fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
+        <!-- Image with blur (scale-up prevents edge artifacts) -->
+        <div
+          class="absolute inset-0"
+          style="
+            background-image: url('{bgImageUrl}');
+            background-size: cover;
+            background-position: center;
+            {bgBlurPx > 0 ? `filter: blur(${bgBlurPx}px); transform: scale(1.08);` : ''}
+          "
+        ></div>
+        <!-- Darkness overlay -->
+        {#if bgOverlay > 0}
+          <div
+            class="absolute inset-0"
+            style="background: rgba(0,0,0,{bgOverlay});"
+          ></div>
+        {/if}
+      </div>
+    {/if}
+
     <div class="w-full max-w-md mx-auto flex flex-col items-center flex-1 pt-5">
       <!-- Section 1: Header Media -->
       <HeaderMediaSection
@@ -153,18 +184,19 @@
         profileId={profile.id}
       />
 
-      <!-- Section 4: Link Sections -->
-      {#each sections as section (section.id)}
-        {#if section.title}
-          <h2 class="w-full px-4 mt-4 mb-1 text-sm font-semibold opacity-70">
-            {section.title}
-          </h2>
+      <!-- Section 4: Components -->
+      {#each components as comp (comp.id)}
+        {#if comp.type === 'links'}
+          <LinksBlock component={comp} themeConfig={themeConfig} {isPro} />
+        {:else if comp.type === 'youtube'}
+          <YouTubeBlock config={comp.config} title={comp.title} />
+        {:else if comp.type === 'spotify'}
+          <SpotifyBlock config={comp.config} title={comp.title} />
+        {:else if comp.type === 'text'}
+          <TextBlock config={comp.config} title={comp.title} textColor={themeConfig.text} />
+        {:else if comp.type === 'divider'}
+          <DividerBlock config={comp.config} />
         {/if}
-        <MainLinksSection
-          links={section.links}
-          layout={section.layout}
-          {themeConfig}
-        />
       {/each}
 
       <!-- Branding -->

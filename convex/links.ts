@@ -36,6 +36,20 @@ async function maxOrderInSection(
   return last ? last.orderIndex + 1 : 0;
 }
 
+async function maxOrderInComponent(
+  ctx: any,
+  componentId: any,
+): Promise<number> {
+  const last = await ctx.db
+    .query("links")
+    .withIndex("by_component", (q: any) =>
+      q.eq("componentId", componentId),
+    )
+    .order("desc")
+    .first();
+  return last ? last.orderIndex + 1 : 0;
+}
+
 // ─── Queries ─────────────────────────────────────────────────
 
 export const getByProfile = query({
@@ -91,6 +105,19 @@ export const getBySection = query({
   },
 });
 
+export const getByComponent = query({
+  args: { componentId: v.id("profileComponents") },
+  handler: async (ctx, { componentId }) => {
+    return await ctx.db
+      .query("links")
+      .withIndex("by_component", (q) =>
+        q.eq("componentId", componentId),
+      )
+      .order("asc")
+      .collect();
+  },
+});
+
 // ─── Mutations ───────────────────────────────────────────────
 
 export const add = mutation({
@@ -136,6 +163,56 @@ export const add = mutation({
     await ctx.db.insert("links", {
       profileId: profile._id,
       sectionId: args.sectionId,
+      title: args.title.trim(),
+      url: args.url.trim(),
+      subtitle: args.subtitle?.trim() || undefined,
+      imageUrl: args.imageUrl?.trim() || undefined,
+      platform: args.platform?.trim() || undefined,
+      orderIndex,
+      isActive: true,
+      highlight: false,
+      startAt: undefined,
+      endAt: undefined,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const addToComponent = mutation({
+  args: {
+    userId: v.id("users"),
+    componentId: v.id("profileComponents"),
+    title: v.string(),
+    url: v.string(),
+    subtitle: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    platform: v.optional(v.string()),
+  },
+  handler: async (ctx, { userId, componentId, ...args }) => {
+    const { profile } = await requireOwnerAndProfile(ctx, userId);
+
+    if (profile.plan === "FREE") {
+      const allLinks = await ctx.db
+        .query("links")
+        .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
+        .collect();
+      if (allLinks.length >= FREE_LINK_LIMIT) {
+        throw new ConvexError(
+          `El plan Free está limitado a ${FREE_LINK_LIMIT} links`,
+        );
+      }
+    }
+
+    const component = await ctx.db.get(componentId);
+    if (!component || component.profileId !== profile._id) {
+      throw new ConvexError("Componente no encontrado");
+    }
+
+    const orderIndex = await maxOrderInComponent(ctx, componentId);
+
+    await ctx.db.insert("links", {
+      profileId: profile._id,
+      componentId,
       title: args.title.trim(),
       url: args.url.trim(),
       subtitle: args.subtitle?.trim() || undefined,
@@ -254,13 +331,18 @@ export const duplicate = mutation({
       throw new ConvexError("Link no encontrado");
     }
 
-    const orderIndex = await maxOrderInSection(
-      ctx,
-      original.sectionId,
-    );
+    let orderIndex: number;
+    if (original.componentId) {
+      orderIndex = await maxOrderInComponent(ctx, original.componentId);
+    } else if (original.sectionId) {
+      orderIndex = await maxOrderInSection(ctx, original.sectionId);
+    } else {
+      orderIndex = 0;
+    }
 
     await ctx.db.insert("links", {
       profileId: profile._id,
+      componentId: original.componentId,
       sectionId: original.sectionId,
       title: `${original.title} (copy)`,
       url: original.url,

@@ -1,18 +1,16 @@
 <script lang="ts">
   import { studio } from '$lib/stores/studio.svelte.js';
-  import PanelLinks from './PanelLinks.svelte';
+  import PanelComponents from './PanelComponents.svelte';
   import PanelHeader from './PanelHeader.svelte';
   import PanelTitleBio from './PanelTitleBio.svelte';
   import PanelContacts from './PanelContacts.svelte';
-  import PanelThemes from './PanelThemes.svelte';
-
-  import PanelBackground from './PanelBackground.svelte';
-  import PanelFonts from './PanelFonts.svelte';
+  import PanelAppearance from './PanelAppearance.svelte';
   import PanelColors from './PanelColors.svelte';
+  import PanelFonts from './PanelFonts.svelte';
   import PanelBranding from './PanelBranding.svelte';
   import type {
     Link,
-    LinkSection,
+    ProfileComponent,
     Profile,
     Theme,
     Font,
@@ -23,7 +21,7 @@
   interface Props {
     profile: Profile;
     links: Link[];
-    sections: LinkSection[];
+    components: ProfileComponent[];
     themes: Theme[];
     fonts: Font[];
     backgrounds: Background[];
@@ -31,26 +29,24 @@
     isPro: boolean;
   }
 
-  let { profile, links, sections, themes, fonts, backgrounds, contacts, isPro }: Props =
+  let { profile, links, components, themes, fonts, backgrounds, contacts, isPro }: Props =
     $props();
 </script>
 
-{#if studio.openPanel === 'links'}
-  <PanelLinks {links} {sections} {profile} {isPro} />
+{#if studio.openPanel === 'components'}
+  <PanelComponents {links} {components} {profile} {isPro} />
 {:else if studio.openPanel === 'header'}
   <PanelHeader {profile} {isPro} />
 {:else if studio.openPanel === 'title'}
   <PanelTitleBio {profile} {isPro} />
 {:else if studio.openPanel === 'contacts'}
   <PanelContacts {contacts} />
-{:else if studio.openPanel === 'themes'}
-  <PanelThemes {themes} {profile} {isPro} />
-{:else if studio.openPanel === 'background'}
-  <PanelBackground {backgrounds} {profile} {isPro} />
+{:else if studio.openPanel === 'appearance'}
+  <PanelAppearance {profile} {themes} {backgrounds} {isPro} />
+{:else if studio.openPanel === 'customize'}
+  <PanelColors {profile} {themes} {isPro} />
 {:else if studio.openPanel === 'fonts'}
   <PanelFonts {fonts} {profile} {isPro} />
-{:else if studio.openPanel === 'colors'}
-  <PanelColors {profile} {themes} {isPro} />
 {:else if studio.openPanel === 'branding'}
   <PanelBranding {profile} {isPro} />
 {/if}

@@ -35,6 +35,56 @@
 </script>
 
 <PanelShell title="Header">
+  <!-- Avatar upload -->
+  <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
+    Avatar
+  </h3>
+  <form
+    method="POST"
+    action="?/uploadAvatar"
+    enctype="multipart/form-data"
+    use:enhance={enhanceAction('Avatar updated')}
+    class="mb-6"
+  >
+    <div class="flex items-center gap-4">
+      <!-- Preview -->
+      <div class="w-16 h-16 rounded-full overflow-hidden bg-gray-100 shrink-0 ring-2 ring-gray-200">
+        {#if profile.avatar_url}
+          <img src={profile.avatar_url} alt="Avatar" class="w-full h-full object-cover" />
+        {:else}
+          <div class="w-full h-full flex items-center justify-center text-xl font-semibold text-gray-400">
+            {(profile.name ?? profile.handle ?? '?')[0].toUpperCase()}
+          </div>
+        {/if}
+      </div>
+      <div class="flex-1 min-w-0">
+        <label
+          class="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg
+            border border-dashed border-gray-300 hover:border-indigo-400
+            text-xs font-medium text-gray-500 hover:text-indigo-600
+            bg-white hover:bg-indigo-50/40 cursor-pointer transition-all"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Change avatar
+          <input
+            type="file"
+            name="avatar"
+            accept="image/*"
+            class="hidden"
+            onchange={(e) => (e.currentTarget.form as HTMLFormElement)?.requestSubmit()}
+          />
+        </label>
+        <p class="text-[10px] text-gray-400 mt-1.5 text-center">Max 2 MB · JPG, PNG, WebP</p>
+      </div>
+    </div>
+  </form>
+
+  <div class="border-t border-gray-100 mb-6"></div>
+
   <!-- Header mode selector -->
   <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
     Header Style

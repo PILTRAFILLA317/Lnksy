@@ -1,29 +1,29 @@
 <script lang="ts">
-  import { studio } from '$lib/stores/studio.svelte.js';
-  import Toast from '$lib/components/ui/Toast.svelte';
-  import EditorRail from '$lib/components/studio/EditorRail.svelte';
-  import EditorPanelHost from '$lib/components/studio/EditorPanelHost.svelte';
-  import StudioPreview from '$lib/components/studio/StudioPreview.svelte';
+  import { studio } from "$lib/stores/studio.svelte.js";
+  import Toast from "$lib/components/ui/Toast.svelte";
+  import EditorRail from "$lib/components/studio/EditorRail.svelte";
+  import EditorPanelHost from "$lib/components/studio/EditorPanelHost.svelte";
+  import StudioPreview from "$lib/components/studio/StudioPreview.svelte";
   import type {
     Link,
-    LinkSection,
+    ProfileComponent,
     Theme,
     Font,
     Background,
     ProfileContact,
     Profile,
-  } from '$lib/types.js';
+  } from "$lib/types.js";
 
   let { data } = $props();
 
   const profile = $derived(data.profile as Profile);
   const links = $derived((data.links ?? []) as Link[]);
-  const sections = $derived((data.sections ?? []) as LinkSection[]);
+  const components = $derived((data.components ?? []) as ProfileComponent[]);
   const themes = $derived((data.themes ?? []) as Theme[]);
   const fonts = $derived((data.fonts ?? []) as Font[]);
   const backgrounds = $derived((data.backgrounds ?? []) as Background[]);
   const contacts = $derived((data.contacts ?? []) as ProfileContact[]);
-  const isPro = $derived(profile?.plan === 'PRO');
+  const isPro = $derived(profile?.plan === "PRO");
 </script>
 
 <svelte:head>
@@ -37,29 +37,25 @@
 />
 
 {#if profile}
-  <div class="h-full flex flex-col">
+  <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
     <!-- Mobile chip strip for subcategories (visible <lg) -->
     <div class="lg:hidden">
       <EditorRail variant="mobile" />
     </div>
 
     <!-- Main studio area -->
-    <div class="flex-1 min-h-0 flex lg:gap-6">
+    <div class="flex-1 min-h-0 flex lg:gap-6 overflow-hidden">
       <!-- Desktop vertical rail (visible >=lg) -->
       <div class="hidden lg:flex h-full">
         <EditorRail variant="desktop" />
       </div>
 
       <!-- Phone preview (center) -->
-      <div
-        class="flex-1 flex items-center justify-center px-0 py-0 md:px-6
-          md:py-5 lg:px-10 lg:py-6
-          overflow-auto min-h-0 min-w-0"
-      >
+      <div class="flex-1 relative min-h-0 min-w-0 overflow-hidden">
         <StudioPreview
           {profile}
           {links}
-          {sections}
+          {components}
           {themes}
           {contacts}
           {fonts}
@@ -71,14 +67,14 @@
       <!-- Desktop panel (right column, visible >=lg) -->
       {#if studio.openPanel}
         <div
-          class="hidden lg:flex lg:flex-col w-[380px] shrink-0
-            border-l border-gray-200 bg-white overflow-hidden"
+          class="hidden lg:block w-95 shrink-0 relative
+            border-l border-gray-200 bg-white"
         >
-          <div class="flex-1 overflow-y-auto min-h-0">
+          <div class="absolute inset-0 overflow-hidden flex flex-col">
             <EditorPanelHost
               {profile}
               {links}
-              {sections}
+              {components}
               {themes}
               {fonts}
               {backgrounds}
@@ -108,16 +104,18 @@
           max-h-[85vh] overflow-hidden flex flex-col"
         style="padding-bottom: env(safe-area-inset-bottom, 0px);"
       >
-        <EditorPanelHost
-          {profile}
-          {links}
-          {sections}
-          {themes}
-          {fonts}
-          {backgrounds}
-          {contacts}
-          {isPro}
-        />
+        <div class="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <EditorPanelHost
+            {profile}
+            {links}
+            {components}
+            {themes}
+            {fonts}
+            {backgrounds}
+            {contacts}
+            {isPro}
+          />
+        </div>
       </div>
     {/if}
   </div>

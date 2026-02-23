@@ -4,8 +4,8 @@ import { daysAgo } from '$lib/utils/helpers.js';
 import { mapDailyProfileStat, mapDailyLinkStat } from '$lib/utils/convex-mappers.js';
 
 export const load: PageServerLoad = async ({ locals, parent, url }) => {
-  const { profile } = await parent();
-  if (!profile) return { stats: [], linkStats: [], links: [], range: 7 };
+  const { profile, user } = await parent();
+  if (!profile || !user) return { stats: [], linkStats: [], links: [], range: 7 };
 
   const isPro = profile.plan === 'PRO';
   const range = isPro ? (url.searchParams.get('range') ?? '7') : '7';
@@ -13,10 +13,12 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
   const since = daysAgo(days);
 
   const profileId = profile.id as any;
+  const userId = user.id as any;
 
   // Profile stats
   const statsDocs = await locals.convex.query(api.analytics.getProfileStats, {
     profileId,
+    userId,
     since,
   });
 
@@ -31,6 +33,7 @@ export const load: PageServerLoad = async ({ locals, parent, url }) => {
 
     if (linkIds.length > 0) {
       const rawLinkStats = await locals.convex.query(api.analytics.getLinkStats, {
+        userId,
         linkIds,
         since,
       });

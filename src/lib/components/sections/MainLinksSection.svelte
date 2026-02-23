@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Link, MainLinksLayout, ThemeConfig } from '$lib/types.js';
+  import { getCardShadow } from '$lib/themes.js';
   import { detectPlatform } from '$lib/utils/platform.js';
   import PlatformBadge from './PlatformBadge.svelte';
 
@@ -7,12 +8,15 @@
     links: Link[];
     layout: MainLinksLayout;
     themeConfig: ThemeConfig;
+    /** If true and theme.iconStyle === 'brand', render brand-colored icons (PRO) */
+    isPro?: boolean;
   }
 
-  let { links, layout, themeConfig }: Props = $props();
+  let { links, layout, themeConfig, isPro = false }: Props = $props();
 
   const tc = $derived(themeConfig);
   const variant = $derived(tc.buttonVariant);
+  const brandColor = $derived(isPro && tc.iconStyle === 'brand');
 </script>
 
 {#if links.length === 0}
@@ -35,12 +39,13 @@
           background: {variant === 'outline' ? 'transparent' : tc.cardBg};
           color: {tc.cardText};
           border: 1px solid {variant === 'outline' ? tc.cardText : tc.cardBorder};
-          border-radius: {tc.cardRadius};
+          border-radius: {tc.buttonRadius ?? tc.cardRadius};
+          box-shadow: {getCardShadow(tc)};
           {tc.backdropBlur ? `backdrop-filter: blur(${tc.backdropBlur});` : ''}
         "
       >
         {#if platform}
-          <PlatformBadge {platform} size={20} color={tc.cardText} />
+          <PlatformBadge {platform} size={20} color={tc.cardText} {brandColor} />
           <span class="text-xs font-medium mt-2 line-clamp-2">
             {link.title}
           </span>
@@ -66,7 +71,7 @@
         class="relative overflow-hidden transition-all
           hover:scale-[1.02] active:scale-[0.98]
           {link.highlight ? 'ring-2 ring-offset-2 ring-yellow-400' : ''}"
-        style="border-radius: {tc.cardRadius};"
+        style="border-radius: {tc.buttonRadius ?? tc.cardRadius};"
       >
         <!-- Image -->
         <div class="aspect-square bg-white/5">
@@ -83,7 +88,7 @@
               style="background: {tc.cardBg};"
             >
               {#if platform}
-                <PlatformBadge {platform} size={32} color={tc.cardText} />
+                <PlatformBadge {platform} size={32} color={tc.cardText} {brandColor} />
               {:else}
                 <span class="text-lg font-bold opacity-30"
                   style="color: {tc.cardText}">
@@ -100,7 +105,7 @@
               flex items-center justify-center shadow-md"
             style="background: {tc.cardBg};"
           >
-            <PlatformBadge {platform} size={14} color={tc.cardText} />
+            <PlatformBadge {platform} size={14} color={tc.cardText} {brandColor} />
           </div>
         {/if}
         <!-- Title overlay -->
@@ -132,7 +137,8 @@
           background: {variant === 'outline' ? 'transparent' : tc.cardBg};
           color: {tc.cardText};
           border: 1px solid {variant === 'outline' ? tc.cardText : tc.cardBorder};
-          border-radius: {tc.cardRadius};
+          border-radius: {tc.buttonRadius ?? tc.cardRadius};
+          box-shadow: {getCardShadow(tc)};
           {tc.backdropBlur ? `backdrop-filter: blur(${tc.backdropBlur});` : ''}
         "
       >
@@ -152,7 +158,7 @@
               style="background: rgba(255,255,255,0.05);"
             >
               {#if platform}
-                <PlatformBadge {platform} size={22} color={tc.cardText} />
+                <PlatformBadge {platform} size={22} color={tc.cardText} {brandColor} />
               {/if}
             </div>
           {/if}
@@ -164,7 +170,7 @@
               flex items-center justify-center shadow-sm"
             style="background: {tc.cardBg};"
           >
-            <PlatformBadge {platform} size={12} color={tc.cardText} />
+            <PlatformBadge {platform} size={12} color={tc.cardText} {brandColor} />
           </div>
         {/if}
         <!-- Text -->
@@ -200,12 +206,13 @@
           background: {variant === 'outline' ? 'transparent' : tc.cardBg};
           color: {tc.cardText};
           border: 1px solid {variant === 'outline' ? tc.cardText : tc.cardBorder};
-          border-radius: {tc.cardRadius};
+          border-radius: {tc.buttonRadius ?? tc.cardRadius};
+          box-shadow: {getCardShadow(tc)};
           {tc.backdropBlur ? `backdrop-filter: blur(${tc.backdropBlur});` : ''}
         "
       >
         {#if platform}
-          <PlatformBadge {platform} size={18} color={tc.cardText} />
+          <PlatformBadge {platform} size={18} color={tc.cardText} {brandColor} />
         {/if}
         <span class="text-sm">{link.title}</span>
         {#if link.subtitle}

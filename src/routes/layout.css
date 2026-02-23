@@ -5,6 +5,15 @@
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Ensure h-screen / h-full chains resolve correctly */
+html {
+  height: 100%;
+}
+body {
+  height: 100%;
+  min-height: 100%;
+}
+
 /* Scrollbar hide utility */
 .scrollbar-hide {
   -ms-overflow-style: none;
