@@ -41,7 +41,7 @@
 {:else if studio.openPanel === 'title'}
   <PanelTitleBio {profile} {isPro} />
 {:else if studio.openPanel === 'contacts'}
-  <PanelContacts {contacts} />
+  <PanelContacts {contacts} plan={isPro ? 'PRO' : 'FREE'} />
 {:else if studio.openPanel === 'theme'}
   <PanelAppearance {profile} {themes} {isPro} />
 {:else if studio.openPanel === 'background'}

@@ -6,6 +6,7 @@
   const tabs: { id: BottomTab; label: string; route?: string }[] = [
     { id: 'editor', label: 'Editor' },
     { id: 'appearance', label: 'Appearance' },
+    { id: 'templates', label: 'Templates', route: '/app/templates' },
     { id: 'analytics', label: 'Analytics', route: '/app/analytics' },
     { id: 'billing', label: 'Billing', route: '/app/billing' },
     { id: 'settings', label: 'Settings', route: '/app/settings' },
@@ -46,6 +47,16 @@
            002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2
            2 0 012.828 0l2.829 2.829a2 2 0 010
            2.828l-8.486 8.485M7 17h.01" />
+    </svg>
+  {:else if id === 'templates'}
+    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+      stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0
+           01-1-1V5zm0 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0
+           01-1 1H5a1 1 0 01-1-1v-4zm10-10a1 1 0 011-1h4a1 1 0
+           011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zm0 10a1 1 0
+           011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
     </svg>
   {:else if id === 'analytics'}
     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"

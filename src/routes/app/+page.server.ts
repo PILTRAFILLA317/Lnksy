@@ -494,6 +494,132 @@ export const actions = {
     return { success: true };
   },
 
+  createCustomContact: async ({ request, locals }) => {
+    const userId = getUserId(locals);
+    const fd = await request.formData();
+    const url = (fd.get('url') as string)?.trim() ?? '';
+    const icon = (fd.get('icon') as string)?.trim() ?? 'globe';
+    const label = (fd.get('label') as string)?.trim() || undefined;
+
+    if (!url) return fail(400, { error: 'URL is required' });
+
+    try {
+      await locals.convex.mutation(api.contacts.createCustom, {
+        userId,
+        url,
+        icon,
+        label,
+      });
+    } catch (e) {
+      return fail(400, { error: convexError(e) });
+    }
+
+    return { success: true };
+  },
+
+  updateCustomContact: async ({ request, locals }) => {
+    const userId = getUserId(locals);
+    const fd = await request.formData();
+    const contactId = fd.get('contactId') as string;
+    const url = (fd.get('url') as string)?.trim() ?? '';
+    const icon = (fd.get('icon') as string)?.trim() ?? 'globe';
+    const label = (fd.get('label') as string)?.trim() || undefined;
+
+    if (!contactId || !url) return fail(400, { error: 'Missing required fields' });
+
+    try {
+      await locals.convex.mutation(api.contacts.updateCustom, {
+        userId,
+        contactId: contactId as any,
+        url,
+        icon,
+        label,
+      });
+    } catch (e) {
+      return fail(400, { error: convexError(e) });
+    }
+
+    return { success: true };
+  },
+
+  deleteContact: async ({ request, locals }) => {
+    const userId = getUserId(locals);
+    const fd = await request.formData();
+    const contactId = fd.get('contactId') as string;
+
+    if (!contactId) return fail(400, { error: 'Missing contactId' });
+
+    try {
+      await locals.convex.mutation(api.contacts.removeById, {
+        userId,
+        contactId: contactId as any,
+      });
+    } catch (e) {
+      return fail(400, { error: convexError(e) });
+    }
+
+    return { success: true };
+  },
+
+  toggleContact: async ({ request, locals }) => {
+    const userId = getUserId(locals);
+    const fd = await request.formData();
+    const contactId = fd.get('contactId') as string;
+    const isEnabled = fd.get('isEnabled') !== 'false';
+
+    if (!contactId) return fail(400, { error: 'Missing contactId' });
+
+    try {
+      await locals.convex.mutation(api.contacts.toggleById, {
+        userId,
+        contactId: contactId as any,
+        isEnabled,
+      });
+    } catch (e) {
+      return fail(400, { error: convexError(e) });
+    }
+
+    return { success: true };
+  },
+
+  moveContactUp: async ({ request, locals }) => {
+    const userId = getUserId(locals);
+    const fd = await request.formData();
+    const contactId = fd.get('contactId') as string;
+
+    if (!contactId) return fail(400, { error: 'Missing contactId' });
+
+    try {
+      await locals.convex.mutation(api.contacts.moveUp, {
+        userId,
+        contactId: contactId as any,
+      });
+    } catch (e) {
+      return fail(400, { error: convexError(e) });
+    }
+
+    return { success: true };
+  },
+
+  moveContactDown: async ({ request, locals }) => {
+    const userId = getUserId(locals);
+    const fd = await request.formData();
+    const contactId = fd.get('contactId') as string;
+
+    if (!contactId) return fail(400, { error: 'Missing contactId' });
+
+    try {
+      await locals.convex.mutation(api.contacts.moveDown, {
+        userId,
+        contactId: contactId as any,
+      });
+    } catch (e) {
+      return fail(400, { error: convexError(e) });
+    }
+
+    return { success: true };
+  },
+
   updateLayout: async ({ request, locals }) => {
     const userId = getUserId(locals);
     const fd = await request.formData();

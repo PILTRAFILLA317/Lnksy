@@ -11,7 +11,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   }
 
   const body = await request.json();
-  const { type, profileId, linkId, anonId, contactType } = body;
+  const { type, profileId, linkId, anonId, contactType, contactId } = body;
 
   if (!profileId || !anonId) {
     return json({ error: 'Missing fields' }, { status: 400 });
@@ -46,6 +46,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     await convex.mutation(api.analytics.trackContactClick, {
       profileId: profileId as any,
       contactType,
+      contactId: contactId ?? undefined,
     });
     return json({ ok: true });
   }

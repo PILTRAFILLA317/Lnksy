@@ -6,7 +6,7 @@ import type {
   PreviewZoomMode,
 } from '$lib/types.js';
 
-export type BottomTab = 'editor' | 'appearance' | 'analytics' | 'billing' | 'settings';
+export type BottomTab = 'editor' | 'appearance' | 'analytics' | 'billing' | 'settings' | 'templates';
 
 export type EditorPanel =
   | 'components'
@@ -167,7 +167,7 @@ class StudioState {
   }
 
   #isValidTab(tab: string): tab is BottomTab {
-    return ['editor', 'appearance', 'analytics', 'billing', 'settings'].includes(tab);
+    return ['editor', 'appearance', 'analytics', 'billing', 'settings', 'templates'].includes(tab);
   }
 
   #isValidZoomMode(mode: string): mode is PreviewZoomMode {

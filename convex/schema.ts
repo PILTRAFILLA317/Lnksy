@@ -83,6 +83,7 @@ export default defineSchema({
       v.literal("spotify"),
       v.literal("divider"),
       v.literal("text"),
+      v.literal("live"),
     ),
     title: v.optional(v.string()),
     config: v.any(),
@@ -142,10 +143,15 @@ export default defineSchema({
       v.literal("email"),
       v.literal("instagram"),
       v.literal("tiktok"),
+      v.literal("custom_link"),
     ),
     value: v.string(),
     orderIndex: v.number(),
     isEnabled: v.boolean(),
+    // Custom link fields (optional for predefined types)
+    url: v.optional(v.string()),
+    icon: v.optional(v.string()),
+    label: v.optional(v.string()),
   })
     .index("by_profile", ["profileId", "orderIndex"])
     .index("by_profile_type", ["profileId", "type"]),

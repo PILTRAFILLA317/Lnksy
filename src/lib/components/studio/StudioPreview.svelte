@@ -18,6 +18,7 @@
   import SpotifyBlock from "$lib/components/blocks/SpotifyBlock.svelte";
   import TextBlock from "$lib/components/blocks/TextBlock.svelte";
   import DividerBlock from "$lib/components/blocks/DividerBlock.svelte";
+  import LiveBlock from "$lib/components/blocks/LiveBlock.svelte";
   import type {
     Profile,
     Link,
@@ -274,6 +275,8 @@
       </div>
     {:else if comp.type === "divider"}
       <DividerBlock config={comp.config} />
+    {:else if comp.type === "live"}
+      <LiveBlock config={comp.config} title={comp.title} />
     {/if}
   {/each}
 {/snippet}
@@ -375,7 +378,7 @@
         >
           <div class="mockup-phone-camera"></div>
           <div
-            class="mockup-phone-display studio-display"
+            class="mockup-phone-display studio-display bg-amber-600"
             style="position: relative;"
           >
             {#if bgImageUrl}

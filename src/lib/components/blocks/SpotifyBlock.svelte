@@ -22,14 +22,14 @@
 		const raw = embedUri.trim();
 
 		// spotify: URI → extract type/id directly
-		const uriMatch = raw.match(/^spotify:(track|album|playlist|episode|show):([a-zA-Z0-9]+)/);
+		const uriMatch = raw.match(/^spotify:(track|album|playlist|artist|episode|show):([a-zA-Z0-9]+)/);
 		if (uriMatch) {
 			return `https://open.spotify.com/embed/${uriMatch[1]}/${uriMatch[2]}`;
 		}
 
 		// Full URL → extract the first occurrence of /{type}/{id}, ignoring
 		// locale prefixes (/intl-xx/), query params (?si=...) and fragments.
-		const urlMatch = raw.match(/(track|album|playlist|episode|show)\/([a-zA-Z0-9]+)/);
+		const urlMatch = raw.match(/(track|album|playlist|artist|episode|show)\/([a-zA-Z0-9]+)/);
 		if (urlMatch) {
 			return `https://open.spotify.com/embed/${urlMatch[1]}/${urlMatch[2]}`;
 		}

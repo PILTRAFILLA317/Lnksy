@@ -19,6 +19,7 @@
   import SpotifyBlock from '$lib/components/blocks/SpotifyBlock.svelte';
   import TextBlock from '$lib/components/blocks/TextBlock.svelte';
   import DividerBlock from '$lib/components/blocks/DividerBlock.svelte';
+  import LiveBlock from '$lib/components/blocks/LiveBlock.svelte';
 
   let { data } = $props();
 
@@ -196,6 +197,8 @@
           <TextBlock config={comp.config} title={comp.title} textColor={themeConfig.text} />
         {:else if comp.type === 'divider'}
           <DividerBlock config={comp.config} />
+        {:else if comp.type === 'live'}
+          <LiveBlock config={comp.config} title={comp.title} />
         {/if}
       {/each}
 

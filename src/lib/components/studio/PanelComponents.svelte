@@ -31,6 +31,7 @@
 		EyeOff,
 		ChevronRight,
 		Plus,
+		Radio,
 	} from "@lucide/svelte";
 
 	interface Props {
@@ -52,6 +53,7 @@
 		spotify: { label: "Spotify", icon: Music,   desc: "Embed a Spotify track or playlist" },
 		text:    { label: "Text",    icon: Type,    desc: "A paragraph of text" },
 		divider: { label: "Divider", icon: Minus,   desc: "Visual separator" },
+		live:    { label: "Live",    icon: Radio,   desc: "Twitch or Kick stream link" },
 	};
 
 	const LAYOUT_OPTIONS: {
@@ -742,6 +744,7 @@
 										value={comp.config?.videoId ?? ""}
 										placeholder="e.g. dQw4w9WgXcQ or full URL"
 										class="flex-1 text-xs border border-gray-200 rounded-lg px-2.5 py-2
+                      bg-white text-gray-900 placeholder-gray-400
                       focus:outline-none focus:ring-2 focus:ring-indigo-400/40"
 										onchange={(e) => {
 											let val = (
@@ -794,14 +797,15 @@
 									value={comp.config?.embedUri ?? ""}
 									placeholder="https://open.spotify.com/track/..."
 									class="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-2
+                    bg-white text-gray-900 placeholder-gray-400
                     focus:outline-none focus:ring-2 focus:ring-indigo-400/40"
 									onchange={(e) => {
 										const raw = (e.target as HTMLInputElement).value.trim();
 
 										// Auto-detect type using regex (handles locale prefixes, ?si= params, etc.)
 										let embedType = comp.config?.embedType ?? "track";
-										const typeMatch = raw.match(/(track|album|playlist|episode|show)\//);
-										if (typeMatch) embedType = typeMatch[1] === "episode" || typeMatch[1] === "show" ? "track" : typeMatch[1];
+										const typeMatch = raw.match(/(track|album|playlist|artist|episode|show)\//);
+										if (typeMatch) embedType = (typeMatch[1] === "episode" || typeMatch[1] === "show") ? "track" : typeMatch[1];
 
 										// Save raw URL — SpotifyBlock will extract type/id cleanly via regex
 										postAction(
@@ -856,6 +860,7 @@
 									placeholder="Write something..."
 									rows="3"
 									class="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-2 resize-y
+                    bg-white text-gray-900 placeholder-gray-400
                     focus:outline-none focus:ring-2 focus:ring-indigo-400/40"
 									onchange={(e) => {
 										postAction(
@@ -899,6 +904,34 @@
 										</button>
 									{/each}
 								</div>
+								<p class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mt-2">
+									Style
+								</p>
+								<div class="flex gap-1.5">
+									{#each [{ value: "plain", label: "Plain" }, { value: "callout", label: "Callout" }, { value: "cta", label: "CTA" }] as v}
+										<button
+											onclick={() => {
+												postAction(
+													"updateComponent",
+													{
+														componentId: comp.id,
+														config: JSON.stringify({
+															...comp.config,
+															variant: v.value,
+														}),
+													},
+													"Style updated",
+												);
+											}}
+											class="flex-1 text-[10px] font-medium py-1.5 rounded-lg border transition-all
+                        {(comp.config?.variant ?? 'plain') === v.value
+												? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+												: 'border-gray-200 text-gray-500 hover:border-gray-300'}"
+										>
+											{v.label}
+										</button>
+									{/each}
+								</div>
 							</div>
 						{:else if comp.type === "divider"}
 							<div class="px-3 pb-3 space-y-2">
@@ -932,6 +965,99 @@
 												s.slice(1)}
 										</button>
 									{/each}
+								</div>
+							</div>
+						{:else if comp.type === "live"}
+							<div class="px-3 pb-3 space-y-3">
+								<div class="space-y-1.5">
+									<label
+										class="text-[10px] font-semibold uppercase tracking-wider text-gray-400"
+									>
+										Platform
+									</label>
+									<div class="flex gap-1.5">
+										{#each [{ value: "twitch", label: "Twitch" }, { value: "kick", label: "Kick" }, { value: "other", label: "Other" }] as opt}
+											<button
+												onclick={() => {
+													postAction(
+														"updateComponent",
+														{
+															componentId: comp.id,
+															config: JSON.stringify({
+																...comp.config,
+																platform: opt.value,
+															}),
+														},
+														"Platform updated",
+													);
+												}}
+												class="flex-1 text-[10px] font-medium py-1.5 rounded-lg border transition-all
+													{comp.config?.platform === opt.value
+														? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+														: 'border-gray-200 text-gray-500 hover:border-gray-300'}"
+											>
+												{opt.label}
+											</button>
+										{/each}
+									</div>
+								</div>
+								<div class="space-y-1.5">
+									<label
+										class="text-[10px] font-semibold uppercase tracking-wider text-gray-400"
+									>
+										Stream URL
+									</label>
+									<input
+										type="url"
+										value={comp.config?.url ?? ""}
+										placeholder={comp.config?.platform === "kick"
+											? "https://kick.com/yourchannel"
+											: "https://twitch.tv/yourchannel"}
+										class="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-2
+											bg-white text-gray-900 placeholder-gray-400
+											focus:outline-none focus:ring-2 focus:ring-indigo-400/40"
+										onchange={(e) => {
+											postAction(
+												"updateComponent",
+												{
+													componentId: comp.id,
+													config: JSON.stringify({
+														...comp.config,
+														url: (e.target as HTMLInputElement).value.trim(),
+													}),
+												},
+												"URL updated",
+											);
+										}}
+									/>
+								</div>
+								<div class="space-y-1.5">
+									<label
+										class="text-[10px] font-semibold uppercase tracking-wider text-gray-400"
+									>
+										Button label
+									</label>
+									<input
+										type="text"
+										value={comp.config?.label ?? "Watch Live"}
+										placeholder="Watch Live"
+										class="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-2
+											bg-white text-gray-900 placeholder-gray-400
+											focus:outline-none focus:ring-2 focus:ring-indigo-400/40"
+										onchange={(e) => {
+											postAction(
+												"updateComponent",
+												{
+													componentId: comp.id,
+													config: JSON.stringify({
+														...comp.config,
+														label: (e.target as HTMLInputElement).value.trim(),
+													}),
+												},
+												"Label updated",
+											);
+										}}
+									/>
 								</div>
 							</div>
 						{/if}

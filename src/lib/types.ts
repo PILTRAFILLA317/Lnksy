@@ -36,7 +36,18 @@ export interface Profile {
 
 // --- Components ---
 
-export type ComponentType = 'links' | 'youtube' | 'spotify' | 'divider' | 'text';
+export type ComponentType = 'links' | 'youtube' | 'spotify' | 'divider' | 'text' | 'live';
+
+// --- Templates ---
+
+export interface TemplateMeta {
+  id: string;
+  name: string;
+  description: string;
+  bestFor: string;
+  emoji: string;
+  isPro: boolean;
+}
 
 export interface ProfileComponent {
   id: string;
@@ -101,7 +112,8 @@ export type ContactType =
   | 'phone'
   | 'email'
   | 'instagram'
-  | 'tiktok';
+  | 'tiktok'
+  | 'custom_link';
 
 export interface ProfileContact {
   id: string;
@@ -111,7 +123,13 @@ export interface ProfileContact {
   order_index: number;
   is_enabled: boolean;
   created_at: string;
+  // Custom link fields (null for predefined types)
+  url: string | null;
+  icon: string | null;
+  label: string | null;
 }
+
+export const FREE_CONTACT_LIMIT = 8;
 
 // --- Theme ---
 

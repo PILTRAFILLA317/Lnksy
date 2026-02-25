@@ -24,6 +24,7 @@
     if (path === "/app/analytics") studio.setTab("analytics");
     else if (path === "/app/billing") studio.setTab("billing");
     else if (path === "/app/settings") studio.setTab("settings");
+    else if (path === "/app/templates") studio.setTab("templates");
   });
 
   async function signOut() {

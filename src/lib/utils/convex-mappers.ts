@@ -97,6 +97,9 @@ export function mapContact(doc: any): ProfileContact {
     order_index: doc.orderIndex,
     is_enabled: doc.isEnabled,
     created_at: new Date(doc._creationTime).toISOString(),
+    url: doc.url ?? null,
+    icon: doc.icon ?? null,
+    label: doc.label ?? null,
   };
 }
 

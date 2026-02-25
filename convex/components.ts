@@ -14,6 +14,7 @@ const COMPONENT_TYPES = [
 	"spotify",
 	"divider",
 	"text",
+	"live",
 ] as const;
 
 const componentTypeValidator = v.union(
@@ -22,6 +23,7 @@ const componentTypeValidator = v.union(
 	v.literal("spotify"),
 	v.literal("divider"),
 	v.literal("text"),
+	v.literal("live"),
 );
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -44,9 +46,11 @@ function defaultConfig(type: string): Record<string, any> {
 		case "spotify":
 			return { embedUri: "", embedType: "track", compact: false };
 		case "text":
-			return { content: "", align: "center" };
+			return { content: "", align: "center", variant: "plain" };
 		case "divider":
 			return { style: "line", height: 1 };
+		case "live":
+			return { url: "", platform: "twitch", label: "Watch me live" };
 		default:
 			return {};
 	}
@@ -79,7 +83,7 @@ function validateConfig(type: string, config: any): Record<string, any> {
 				typeof config?.embedUri === "string"
 					? config.embedUri.trim().slice(0, 200)
 					: "";
-			const validTypes = ["track", "album", "playlist"];
+			const validTypes = ["track", "album", "playlist", "artist"];
 			safe.embedType = validTypes.includes(config?.embedType)
 				? config.embedType
 				: "track";
@@ -95,6 +99,10 @@ function validateConfig(type: string, config: any): Record<string, any> {
 			safe.align = validAligns.includes(config?.align)
 				? config.align
 				: "center";
+			const validVariants = ["plain", "callout", "cta"];
+			safe.variant = validVariants.includes(config?.variant)
+				? config.variant
+				: "plain";
 			break;
 		}
 		case "divider": {
@@ -106,6 +114,42 @@ function validateConfig(type: string, config: any): Record<string, any> {
 				typeof config?.height === "number"
 					? Math.max(1, Math.min(config.height, 5))
 					: 1;
+			break;
+		}
+		case "live": {
+			const rawUrl =
+				typeof config?.url === "string" ? config.url.trim() : "";
+			// Validate URL: only twitch.tv, kick.com, or safe https URLs
+			let safeUrl = "";
+			if (rawUrl) {
+				try {
+					const u = new URL(rawUrl);
+					const host = u.hostname.replace(/^www\./, "");
+					if (
+						u.protocol === "https:" &&
+						!rawUrl.toLowerCase().startsWith("javascript:")
+					) {
+						if (
+							host === "twitch.tv" ||
+							host === "kick.com" ||
+							config?.platform === "other"
+						) {
+							safeUrl = rawUrl.slice(0, 500);
+						}
+					}
+				} catch {
+					// Invalid URL — leave empty
+				}
+			}
+			safe.url = safeUrl;
+			const validPlatforms = ["twitch", "kick", "other"];
+			safe.platform = validPlatforms.includes(config?.platform)
+				? config.platform
+				: "twitch";
+			safe.label =
+				typeof config?.label === "string"
+					? config.label.trim().slice(0, 100)
+					: "Watch Live";
 			break;
 		}
 	}

@@ -142,6 +142,7 @@ export const trackContactClick = mutation({
   args: {
     profileId: v.id("profiles"),
     contactType: v.string(),
+    contactId: v.optional(v.string()),
   },
   handler: async (ctx, { profileId }) => {
     const today = todayDate();

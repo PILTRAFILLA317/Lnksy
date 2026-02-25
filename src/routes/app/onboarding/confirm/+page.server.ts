@@ -36,9 +36,8 @@ export const actions = {
     }
 
     const userId = user.id as Id<"users">;
-    let profileId: any;
     try {
-      profileId = await locals.convex.mutation(api.profiles.create, {
+      await locals.convex.mutation(api.profiles.create, {
         userId,
         handle,
         name: undefined,
@@ -48,17 +47,7 @@ export const actions = {
       return fail(400, { error: msg, handle });
     }
 
-    const sections = await locals.convex.query(api.sections.getByProfile, {
-      profileId: profileId as any,
-    });
-
-    if (sections && sections.length > 0) {
-      const sectionId = sections[0]._id as any;
-      await locals.convex.mutation(api.links.add, { userId, sectionId, title: 'My Website', url: 'https://example.com' });
-      await locals.convex.mutation(api.links.add, { userId, sectionId, title: 'Twitter', url: 'https://twitter.com' });
-      await locals.convex.mutation(api.links.add, { userId, sectionId, title: 'Instagram', url: 'https://instagram.com' });
-    }
-
-    redirect(303, '/app');
+    // Redirect to template selection — Minimal is applied as default if skipped
+    redirect(303, '/app/onboarding/template');
   },
 } satisfies Actions;
